@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────
+# stellar-spectra-ai — .gitignore
+# ─────────────────────────────────────────
+
+# RAW SPECTRAL DATA (.fits files)
+# These files are large (1–5 MB each).
+# With 2000 spectra that is up to 10 GB — too large for git.
+# Store them on an external hard drive or Google Drive instead.
+data/raw/
+
+# PROCESSED NUMPY ARRAYS
+# Phase 2 will create .npy files (preprocessed spectra).
+# These are also large and can be regenerated from raw data.
+data/processed/
+
+# PYTHON CACHE
+# Python creates these automatically — they are not source code.
+__pycache__/
+*.py[cod]
+*.pyo
+
+# JUPYTER NOTEBOOK CHECKPOINTS
+# Auto-saved by Jupyter — not needed in version control.
+.ipynb_checkpoints/
+
+# OPERATING SYSTEM FILES
+# Invisible metadata files created by Mac and Windows.
+.DS_Store
+Thumbs.db
+
+# ENVIRONMENT FILES
+# If you use a virtual environment, its files stay local.
+venv/
+.env/
+*.egg-info/
+
+# PLOT IMAGES (optional — remove this block if you want to track them)
+# notebooks/*.png
+
+# LARGE LOG FILES
+# Keep the logs folder but ignore large auto-generated logs.
+logs/download_log.txt
+
+# MODEL CHECKPOINTS (Phase 4)
+# These will be large binary files — store them separately.
+models/checkpoints/
+*.pt
+*.pth
+*.h5
