@@ -7,13 +7,13 @@ from tqdm import tqdm
 # ─────────────────────────────────────────────
 # CONFIGURATION — edit these two lines each run
 # ─────────────────────────────────────────────
-CSV_FILE   = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\catalog\main_sequence.csv"   # path to your CSV
-OUTPUT_DIR = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\raw\main_sequence"            # folder to save .fits files
+CSV_FILE   = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\catalog\red_giants.csv"   # path to your CSV
+OUTPUT_DIR = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\raw\red_giant"            # folder to save .fits files
 # ─────────────────────────────────────────────
 
 LOG_FILE     = "../logs/download_log.txt"
 FAILED_FILE  = "../logs/failed_downloads.txt"
-BASE_URL = "https://data.sdss.org/sas/dr17/sdss/spectro/redux/26/spectra"
+BASE_URL = "https://dr18.sdss.org/sas/dr18/spectro/redux/v5_13_2/spectra/lite"
 DELAY        = 0.5   # seconds to wait between requests — be polite to the server
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
