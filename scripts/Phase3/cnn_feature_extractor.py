@@ -84,7 +84,7 @@ HOW TO RUN:
        If you have an NVIDIA GPU also run:
            pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
     3. Run:
-           python 10_cnn_feature_extractor.py
+           python cnn_feature_extractor.py
 
        Training takes 5-15 minutes on CPU, 1-3 minutes on GPU.
 
@@ -142,7 +142,7 @@ FEAT_LABELS_PATH= os.path.join(PROCESSED_DIR, "features_labels.npy")
 BATCH_SIZE    = 32      # how many spectra to process at once
 LEARNING_RATE = 1e-3    # how fast the model updates its weights
 MAX_EPOCHS    = 50      # maximum training rounds
-PATIENCE      = 7       # stop if val loss doesnt improve for this many epochs
+PATIENCE      = 7       # stop if val loss doesn't improve for this many epochs
 DROPOUT_1     = 0.4     # dropout rate after first dense layer
 DROPOUT_2     = 0.3     # dropout rate after second dense layer
 RANDOM_SEED   = 42      # for reproducible train/val/test splits
@@ -355,7 +355,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 # Learning rate scheduler: reduce LR by half if val loss
-# doesnt improve for 3 epochs -- helps fine-tune later training
+# doesn't improve for 3 epochs -- helps fine-tune later training
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode="min", factor=0.5, patience=3
 )
@@ -593,4 +593,4 @@ print(f"  Test accuracy:    {test_acc*100:.1f}%")
 print(f"  Features shape:   {features.shape}")
 print(f"  Model saved:      {MODEL_PATH}")
 print(f"  Features saved:   {FEATURES_PATH}")
-print("\nNext: Run  11_visualise_features.py")
+print("\nNext: Run  visualise_features.py")

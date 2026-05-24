@@ -4,28 +4,6 @@
 PHASE 4 - STEP 1: Improved Model Training
 =============================================================
 
-WHY ARE WE RETRAINING INSTEAD OF USING THE PHASE 3 MODEL?
------------------------------------------------------------
-Phase 3 gave us 73.9% accuracy with three clear problems:
-
-PROBLEM 1: Unstable training (val loss spiking wildly)
-    Epochs 11, 13, 17, 18 had val loss jump to 3.x and 6.x
-    before recovering. This happens when the learning rate
-    is too high -- the model overshoots good weight values
-    and has to recover. Fix: lower learning rate + warmup.
-
-PROBLEM 2: Red giant recall only 21%
-    The model barely detects red giants. Root cause: your
-    SDSS query for red giants pulled K and M type stars, but
-    many of those are dwarf stars (main sequence) not giants.
-    The labels are noisy. Fix: class weights that penalise
-    the model more heavily for missing red giants.
-
-PROBLEM 3: Model hit epoch 50 and training was still improving
-    The best val loss was still decreasing at the final epoch.
-    Fix: increase max epochs to 100 and add cosine annealing
-    scheduler which smoothly reduces learning rate over time.
-
 WHAT IS DIFFERENT IN PHASE 4:
 -------------------------------
 1. Lower initial learning rate (1e-4 instead of 1e-3)
@@ -71,8 +49,8 @@ WHAT THIS SCRIPT DOES:
     8. Plots training curves and confusion matrix
 
 HOW TO RUN:
-    Run:   python 12_improved_training.py
-    Time:  3-6 minutes on your RTX 3050
+    Run:   python improved_training.py
+    Time:  3-6 minutes (varies with systems)
 
 OUTPUT FILES:
     - /models/cnn_v2.pth
@@ -186,7 +164,6 @@ class ImprovedStellarCNN(nn.Module):
     - Residual blocks for training stability
     - Deeper architecture (more capacity)
     - Same extract_features interface as Phase 3 model
-      so Phase 5 (LLM layer) can use it unchanged
     """
     def __init__(self, input_length=3000, n_classes=4):
         super(ImprovedStellarCNN, self).__init__()
@@ -558,15 +535,6 @@ print(f"\nTest accuracy: {test_acc:.4f}  ({test_acc*100:.1f}%)")
 print()
 print(classification_report(all_labels, all_preds, target_names=CLASS_NAMES))
 
-# Compare against Phase 3
-print("Comparison with Phase 3:")
-print(f"  Phase 3 accuracy: 73.9%")
-print(f"  Phase 4 accuracy: {test_acc*100:.1f}%")
-improvement = test_acc*100 - 73.9
-sign = "+" if improvement >= 0 else ""
-print(f"  Change:           {sign}{improvement:.1f}%")
-
-
 # ─────────────────────────────────────────────
 # EXTRACT FEATURES WITH IMPROVED MODEL
 # ─────────────────────────────────────────────
@@ -722,7 +690,6 @@ print(f"Per-class metrics saved to:\n  {metrics_path}")
 print("\n" + "=" * 60)
 print("PHASE 4 - STEP 1 COMPLETE")
 print("=" * 60)
-print(f"\n  Phase 3 accuracy:  73.9%")
 print(f"  Phase 4 accuracy:  {test_acc*100:.1f}%")
 print(f"\n  Per-class F1 scores:")
 for name in CLASS_NAMES:
@@ -731,4 +698,4 @@ for name in CLASS_NAMES:
     print(f"    {name:<22}  F1={f1:.3f}  {bar}")
 print(f"\n  Model:    {MODEL_PATH}")
 print(f"  Features: {FEATURES_PATH}")
-print(f"\nNext: Run  13_evaluate_and_report.py")
+print(f"\nNext: Run  evaluate_and_report.py")

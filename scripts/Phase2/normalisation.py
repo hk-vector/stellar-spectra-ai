@@ -65,16 +65,16 @@ WHAT THIS SCRIPT DOES:
     7. Plots the continuum fit and normalised result per class
 
 HOW TO RUN:
-    1. Make sure 07_noise_removal.py has finished
+    1. Make sure noise_removal.py has finished
     2. Run:
-           python 08_normalisation.py
+        python normalisation.py
 
 OUTPUT FILES:
     - /data/processed/step3_normalised/{label}/spec-XXXX.npz
-      Each .npz contains:
-          wavelength  — same corrected wavelength
-          flux        — normalised flux (continuum = 1.0)
-          continuum   — the estimated continuum curve (for reference)
+    - Each .npz contains:
+        wavelength  — same corrected wavelength
+        flux        — normalised flux (continuum = 1.0)
+        continuum   — the estimated continuum curve (for reference)
     - /notebooks/normalisation_comparison.png
     - master_catalog.csv updated with 'normalised_filepath' column
 
@@ -115,12 +115,12 @@ CLASS_COLORS = {
 # ─────────────────────────────────────────────
 # NORMALISATION PARAMETERS
 # ─────────────────────────────────────────────
-SPLINE_ITERATIONS = 3      # how many times to re-fit after clipping absorption lines
-SIGMA_CLIP        = 1.0    # points this many sigma BELOW the fit are excluded (absorption)
-SPLINE_SMOOTH     = 1e6    # spline smoothing factor — higher = smoother continuum
-                           # if continuum looks too wavy, increase this value
-NORM_CLIP_LO      = 0.0    # clip normalised flux below this (physically, flux >= 0)
-NORM_CLIP_HI      = 3.0    # clip normalised flux above this (emission lines rarely > 3x continuum)
+SPLINE_ITERATIONS = 3       # how many times to re-fit after clipping absorption lines
+SIGMA_CLIP        = 1.0     # points this many sigma BELOW the fit are excluded (absorption)
+SPLINE_SMOOTH     = 1e6     # spline smoothing factor — higher = smoother continuum
+                            # if continuum looks too wavy, increase this value
+NORM_CLIP_LO      = 0.0     # clip normalised flux below this (physically, flux >= 0)
+NORM_CLIP_HI      = 3.0     # clip normalised flux above this (emission lines rarely > 3x continuum)
 
 
 # ─────────────────────────────────────────────
@@ -209,7 +209,7 @@ print(f"\nLoaded catalog: {len(master)} rows")
 
 if "noise_filepath" not in master.columns:
     print("\nERROR: 'noise_filepath' column not found.")
-    print("Run 07_noise_removal.py first.")
+    print("Run noise_removal.py first.")
     sys.exit(1)
 
 for label in master["label"].unique():
@@ -346,4 +346,4 @@ print("=" * 60)
 print(f"  Normalised spectra: {success}")
 print(f"  Output folder:      {OUT_DIR}")
 print(f"  Catalog updated:    normalised_filepath column added")
-print("\nNext: Run  09_resampling.py")
+print("\nNext: Run  resampling.py")

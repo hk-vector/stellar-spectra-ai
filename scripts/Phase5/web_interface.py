@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 =============================================================
-PHASE 6: Web Interface (Gradio)
+PHASE 5: Web Interface (Gradio)
 =============================================================
 
 WHAT THIS DOES:
@@ -15,7 +15,7 @@ Launches a local web app where a user can:
 
 HOW TO RUN:
     pip install gradio
-    python 17_web_interface.py
+    python web_interface.py
 
 Then open your browser at:
     http://localhost:7860
@@ -415,7 +415,7 @@ def format_measurements(measurements, pred_class, confidence):
 | Temperature class | {m["temp_class"]} |
 | Colour index (blue/red) | {m["colour_index"]:.3f}  *({ci_desc})* |
 | Signal-to-noise ratio | {m["snr"]:.1f}  *({snr_desc})* |
-| Emission lines present | {"✅  Yes — broad emission detected" if m["emission"] else "❌  No — absorption spectrum"} |
+| Emission lines present | {"Yes — broad emission detected" if m["emission"] else "No — absorption spectrum"} |
 | Redshift | {z_str} |
 
 ---
@@ -427,10 +427,10 @@ def format_measurements(measurements, pred_class, confidence):
 """
     for name, ew in ews.items():
         wl  = SPECTRAL_LINES[name]["wl"]
-        if abs(ew) > 15:    strength = "🔴  Strong"
-        elif abs(ew) > 5:   strength = "🟡  Moderate"
-        elif abs(ew) > 0.5: strength = "🟢  Weak"
-        else:                strength = "⚪  Not detected"
+        if abs(ew) > 15:    strength = "Strong"
+        elif abs(ew) > 5:   strength = "Moderate"
+        elif abs(ew) > 0.5: strength = "Weak"
+        else:                strength = "Not detected"
         ltype = " (emission)" if ew < -0.5 else " (absorption)" if ew > 0.5 else ""
         md += f"| {name} | {wl} Å | {ew:+.2f}{ltype} | {strength} |\n"
 
@@ -528,7 +528,6 @@ with gr.Blocks(css=css, title="Stellar Spectra Classifier") as app:
             3. Results appear on the right
 
             **File format:** SDSS spectral .fits files
-            (the ones downloaded in Phase 1 of this project)
             """)
 
         with gr.Column(scale=3):

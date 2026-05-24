@@ -63,9 +63,9 @@ WHAT THIS SCRIPT DOES:
     6. Saves all plots to /notebooks/
 
 HOW TO RUN:
-    1. Make sure 10_cnn_feature_extractor.py has finished
+    1. Make sure cnn_feature_extractor.py has finished
     2. Run:
-           python 11_visualise_features.py
+           python visualise_features.py
 
        t-SNE on ~1700 samples takes about 1-2 minutes. Normal.
 
@@ -111,10 +111,10 @@ MODEL_PATH         = os.path.join(MODELS_DIR,    "cnn_feature_extractor.pth")
 X_PATH             = os.path.join(PROCESSED_DIR, "X.npy")
 
 CLASS_COLORS = {
-    0: "#4A90D9",   # white_dwarf  -- blue
-    1: "#E8593C",   # quasar       -- red-orange
-    2: "#3BAD75",   # main_sequence -- green
-    3: "#D4A017",   # red_giant    -- amber
+    0: "#4A90D9",   # white_dwarf
+    1: "#E8593C",   # quasar
+    2: "#3BAD75",   # main_sequence
+    3: "#D4A017",   # red_giant
 }
 
 # Key absorption/emission lines to mark on activation maps
@@ -150,7 +150,7 @@ for path, name in [
 ]:
     if not os.path.exists(path):
         print(f"\nERROR: {name} not found.")
-        print("Run 10_cnn_feature_extractor.py first.")
+        print("Run cnn_feature_extractor.py first.")
         sys.exit(1)
 
 features = np.load(FEATURES_PATH)
@@ -462,4 +462,3 @@ print("  Next: Phase 4 -- Model Training")
 print("  Your CNN is already trained (saved in /models/).")
 print("  Phase 4 will fine-tune it and build the full")
 print("  classification + evaluation pipeline.")
-print()

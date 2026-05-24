@@ -7,7 +7,7 @@ WHAT IS REDSHIFT AND WHY DOES IT MATTER?
 ─────────────────────────────────────────
 When an object in space is moving away from us, its light
 gets stretched to longer (redder) wavelengths. This shift
-is called redshift, measured as the value 'z' in your catalog.
+is called redshift, measured as the value 'z' in the catalog.
 
 Example: The hydrogen alpha absorption line (Hα) sits at
 6563 Å in a stationary star. In a quasar with z=0.5, that
@@ -27,7 +27,7 @@ far away the object is.
 The formula is simple:
     wavelength_rest = wavelength_observed / (1 + z)
 
-Most stars in your dataset have z ≈ 0 (they are in our galaxy
+Most stars in the dataset have z ≈ 0 (they are in our galaxy
 and barely moving relative to us), so correction makes almost
 no difference for them. But quasars can have z > 2, meaning
 their features are shifted by 3x — correction is critical.
@@ -44,18 +44,18 @@ WHAT THIS SCRIPT DOES:
     6. Plots before/after comparison for one spectrum per class
 
 HOW TO RUN:
-    1. Make sure 04_verify_catalog.py has been run and your
-       master_catalog.csv has 1782 clean rows
+    1. Make sure verify_catalog.py has been run and the
+        master_catalog.csv has clean rows
     2. Open terminal, navigate to scripts folder:
-           cd "C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\scripts"
+        cd "C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\scripts"
     3. Run:
-           python 06_redshift_correction.py
+        python redshift_correction.py
 
 OUTPUT FILES:
     - /data/processed/step1_redshift/{label}/spec-XXXX.npz
-      Each .npz contains two arrays:
-          wavelength — corrected wavelength axis in Angstroms
-          flux       — raw flux values (not yet normalised)
+    - Each .npz contains two arrays:
+        wavelength — corrected wavelength axis in Angstroms
+        flux       — raw flux values (not yet normalised)
     - /notebooks/redshift_comparison.png
     - master_catalog.csv updated with 'redshift_filepath' column
 
@@ -161,7 +161,7 @@ print("=" * 60)
 
 if not os.path.exists(CATALOG_FILE):
     print(f"\nERROR: master_catalog.csv not found at:\n  {CATALOG_FILE}")
-    print("Run 04_verify_catalog.py first.")
+    print("Run verify_catalog.py first.")
     sys.exit(1)
 
 master = pd.read_csv(CATALOG_FILE)
@@ -171,7 +171,7 @@ print(f"\nLoaded catalog: {len(master)} rows")
 if "z" not in master.columns:
     print("\nERROR: 'z' column not found in catalog.")
     print("This column holds the redshift value from SDSS.")
-    print("Re-check your SQL query included 'z' in the SELECT.")
+    print("Re-check the SQL query included 'z' in the SELECT.")
     sys.exit(1)
 
 # Fill missing z values with 0 (treat as no redshift)
@@ -301,4 +301,4 @@ print("=" * 60)
 print(f"  Corrected spectra: {success}")
 print(f"  Output folder:     {OUT_DIR}")
 print(f"  Catalog updated:   redshift_filepath column added")
-print("\nNext: Run  07_noise_removal.py")
+print("\nNext: Run  noise_removal.py")

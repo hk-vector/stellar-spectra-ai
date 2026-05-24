@@ -5,7 +5,7 @@ PHASE 2 — STEP 4: Resampling to a Uniform Wavelength Grid
 
 WHAT IS RESAMPLING AND WHY IS IT THE FINAL STEP?
 ─────────────────────────────────────────────────
-After the first three steps your spectra are clean and
+After the first three steps the spectra are clean and
 normalised — but they still have a critical problem:
 every spectrum has a DIFFERENT number of data points.
 
@@ -15,13 +15,13 @@ might have 3,850 pixels. One from 2018 might have 4,632.
 After redshift correction, the wavelength axes are also at
 slightly different positions for each object.
 
-Your neural network (CNN or Transformer) needs every single
-input to be EXACTLY the same length. You cannot pass arrays
+The neural network (CNN or Transformer) needs every single
+input to be EXACTLY the same length. We cannot pass arrays
 of different sizes into a model — it is mathematically
 impossible to batch them together for training.
 
 Resampling solves this by interpolating every spectrum onto
-a single fixed wavelength grid that you define.
+a single fixed wavelength grid that we define.
 
 THE WAVELENGTH RANGE WE USE:
 ─────────────────────────────
@@ -63,9 +63,9 @@ WHAT THIS SCRIPT DOES:
        maps to which class name
 
 HOW TO RUN:
-    1. Make sure 08_normalisation.py has finished
+    1. Make sure normalisation.py has finished
     2. Run:
-           python 09_resampling.py
+        python resampling.py
 
 OUTPUT FILES:
     - /data/processed/step4_resampled/{label}/spec-XXXX.npz
@@ -128,7 +128,7 @@ TARGET_GRID = np.linspace(WAVE_MIN, WAVE_MAX, N_POINTS, dtype=np.float32)
 # ─────────────────────────────────────────────
 # LABEL MAPPING
 # Maps class name strings to integer indices.
-# The model outputs a number — this tells you
+# The model outputs a number — this tells us
 # what stellar class that number means.
 # ─────────────────────────────────────────────
 LABEL_MAP = {
@@ -214,7 +214,7 @@ print(f"Resolution:  {(WAVE_MAX - WAVE_MIN) / N_POINTS:.2f} Å per pixel")
 
 if "normalised_filepath" not in master.columns:
     print("\nERROR: 'normalised_filepath' column not found.")
-    print("Run 08_normalisation.py first.")
+    print("Run normalisation.py first.")
     sys.exit(1)
 
 for label in master["label"].unique():
@@ -282,8 +282,8 @@ print(f"\n  Resampled: {success} / {len(master)} spectra")
 # X.npy shape: (n_samples, N_POINTS) = (1782, 3000)
 # y.npy shape: (n_samples,)          = (1782,)
 #
-# These are the files you will pass directly into
-# your model training script in Phase 4.
+# These are the files that will be passed directly into
+# the model training script in Phase 4.
 # ─────────────────────────────────────────────
 print("\nBuilding final X.npy and y.npy dataset arrays...")
 
@@ -379,7 +379,7 @@ for plot_idx, (cls, label_int) in enumerate(LABEL_MAP.items()):
                     name, fontsize=7, color="gray", va="top")
 
     ax.set_title(f"{cls.replace('_', ' ').title()}  (n={len(class_indices)})",
-                 fontsize=12, fontweight="bold", color=color)
+                fontsize=12, fontweight="bold", color=color)
     ax.set_xlabel("Wavelength (Å)")
     ax.set_ylabel("Normalised Flux")
     ax.set_ylim(0, 2.0)
@@ -387,7 +387,7 @@ for plot_idx, (cls, label_int) in enumerate(LABEL_MAP.items()):
     ax.legend(fontsize=8)
 
 plt.suptitle("Resampled Spectra by Class (faint = individual, bold = mean)",
-             fontsize=13, fontweight="bold")
+            fontsize=13, fontweight="bold")
 plt.tight_layout()
 plot1_path = os.path.join(NOTEBOOKS, "resampled_grid_comparison.png")
 plt.savefig(plot1_path, dpi=150, bbox_inches="tight")
@@ -410,7 +410,7 @@ ax1.set_title("Final Dataset — Class Distribution", fontsize=12, fontweight="b
 ax1.set_ylabel("Number of Samples")
 for bar, count in zip(bars, counts):
     ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 3,
-             str(count), ha="center", va="bottom", fontsize=11, fontweight="bold")
+            str(count), ha="center", va="bottom", fontsize=11, fontweight="bold")
 ax1.set_ylim(0, max(counts) * 1.15)
 ax1.grid(True, alpha=0.2, axis="y")
 
@@ -422,7 +422,7 @@ for cls, label_int in LABEL_MAP.items():
     mean_flux = X[class_indices].mean(axis=0)
     color     = CLASS_COLORS.get(cls, "#555555")
     ax2.plot(TARGET_GRID, mean_flux, lw=1.2, color=color,
-             label=cls.replace("_", " ").title(), alpha=0.9)
+            label=cls.replace("_", " ").title(), alpha=0.9)
 
 ax2.set_title("Mean Spectrum per Class", fontsize=12, fontweight="bold")
 ax2.set_xlabel("Wavelength (Å)")
@@ -432,7 +432,7 @@ ax2.set_ylim(0, 1.8)
 ax2.grid(True, alpha=0.2)
 
 plt.suptitle(f"Phase 2 Complete — {len(X)} samples × {N_POINTS} wavelength points",
-             fontsize=13, fontweight="bold")
+            fontsize=13, fontweight="bold")
 plt.tight_layout()
 plot2_path = os.path.join(NOTEBOOKS, "final_dataset_summary.png")
 plt.savefig(plot2_path, dpi=150, bbox_inches="tight")
@@ -447,25 +447,18 @@ print("\n" + "=" * 60)
 print("PHASE 2 COMPLETE — ALL PREPROCESSING DONE")
 print("=" * 60)
 print()
-print("  Pipeline completed:")
-print("    Step 1  Redshift correction      06_redshift_correction.py")
-print("    Step 2  Noise removal            07_noise_removal.py")
-print("    Step 3  Continuum normalisation  08_normalisation.py")
-print("    Step 4  Resampling               09_resampling.py  ← you are here")
+print("Final dataset:")
+print(f"X.npy  shape: {X.shape}  — the spectra (input to the model)")
+print(f"y.npy  shape: {y.shape}  — the labels  (what the model predicts)")
 print()
-print("  Final dataset:")
-print(f"    X.npy  shape: {X.shape}  — the spectra (input to your model)")
-print(f"    y.npy  shape: {y.shape}  — the labels  (what the model predicts)")
+print("How to load these in the training script (Phase 3/4):")
+print("import numpy as np")
+print("X = np.load('data/processed/X.npy')  # shape (n, 3000)")
+print("y = np.load('data/processed/y.npy')  # shape (n,)")
 print()
-print("  How to load these in your training script (Phase 3/4):")
-print("    import numpy as np")
-print("    X = np.load('data/processed/X.npy')  # shape (n, 3000)")
-print("    y = np.load('data/processed/y.npy')  # shape (n,)")
-print()
-print("  Label mapping (saved in data/processed/label_map.json):")
+print("Label mapping (saved in data/processed/label_map.json):")
 for cls, idx_val in LABEL_MAP.items():
     print(f"    {idx_val} = {cls}")
 print()
-print("  Next phase: Phase 3 — Feature Extraction")
-print("  Or jump to: Phase 4 — Model Training (CNN on X.npy and y.npy)")
-print()
+print("Next phase: Phase 3 — Feature Extraction")
+print("Or jump to: Phase 4 — Model Training (CNN on X.npy and y.npy)")

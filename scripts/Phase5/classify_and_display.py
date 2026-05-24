@@ -1,7 +1,100 @@
-# -*- coding: utf-8 -*-
-# PHASE 5 - PART 1 OF 2
-# Save this as 14_classify_and_display.py
-# Then paste Part 2 at the bottom of this file
+r"""
+=============================================================
+PHASE 5 - STEP 1: Classify and Display Results
+=============================================================
+
+WHAT THIS SCRIPT DOES:
+------------------------
+Takes any raw SDSS .fits spectrum file, runs it through the
+complete preprocessing and classification pipeline, measures
+physical features from the spectrum, and displays a clean
+formatted result directly in your terminal.
+
+No API keys, no internet connection, no browser needed.
+Everything runs locally using the trained CNN model.
+
+THE COMPLETE PIPELINE INSIDE THIS SCRIPT:
+-------------------------------------------
+Step 1: Read the .fits file using astropy
+        - Extracts wavelength array, flux array
+        - Reads redshift z from SPECOBJ table (not COADD header)
+            This is critical -- SDSS DR18 stores z in SPECOBJ
+
+Step 2: Redshift correction
+        - wavelength_rest = wavelength_observed / (1 + z)
+        - Essential for quasars which can have z > 2
+
+Step 3: Wavelength clipping
+        - Keeps only 3500-10000 Angstrom range
+        - Removes edge data that confuses the normaliser
+
+Step 4: Savitzky-Golay noise smoothing
+        - window=11, polyorder=3
+        - Removes pixel noise while preserving line shapes
+
+Step 5: Continuum normalisation
+        - Iterative spline fit excludes absorption lines
+        - Divides flux by continuum so baseline = 1.0
+
+Step 6: Resampling to fixed grid
+        - Interpolates to exactly 3000 points (3800-9200 A)
+        - Required because CNN needs fixed-length input
+
+Step 7: CNN classification
+        - Passes flux through trained ResNet CNN
+        - Returns 4 class probability scores
+
+Step 8: Physical measurements
+        - Colour index (blue/red flux ratio)
+        - Equivalent widths of 7 spectral lines
+        - Signal-to-noise ratio
+        - Emission line detection
+        - Temperature class estimate
+
+Step 9: Display formatted results in terminal
+        - Class name and confidence
+        - Probability bar chart for all classes
+        - Physical measurements table
+        - Spectral line strengths
+        - Plain-English description of the class
+
+HOW TO RUN:
+
+    Option A -- classify a specific .fits file:
+        python classify_and_display.py "path\to\spectrum.fits"
+        Example:
+        python classify_and_display.py "C:\Users\Harshit\OneDrive\
+        Desktop\stellar-spectra-ai\data\raw\white_dwarf\spec-0266-51602-0001.fits"
+
+    Option B -- auto mode (no argument needed):
+        python classify_and_display.py
+        Automatically picks one spectrum from each class in
+        your catalog and classifies all four.
+
+    Option C -- batch mode (tests 5 per class, saves CSV):
+        python classify_and_display.py --batch
+        Classifies 5 random spectra from each class.
+        Saves results to /notebooks/batch_results.csv
+        Prints overall accuracy at the end.
+
+OUTPUT FILES:
+    - /notebooks/spectrum_plot.png
+      Plot of the last classified spectrum showing normalised
+      flux with all spectral line positions marked.
+
+    - /notebooks/classification_result.json
+      Full result of the last single-file classification
+      including all probabilities and measurements.
+
+    - /notebooks/batch_results.csv  (batch mode only)
+      One row per spectrum with: file name, true label,
+      predicted class, confidence, all four class probabilities,
+      and equivalent widths of all seven spectral lines.
+
+REQUIRES:
+    pip install torch astropy scipy numpy matplotlib pandas
+=============================================================
+"""
 
 import os
 import sys
@@ -270,10 +363,6 @@ def get_measurements(flux, z=0.0):
         "redshift":     z,
         "line_ews":     ews,
     }
-# -*- coding: utf-8 -*-
-# PHASE 5 - PART 2 OF 2
-# Paste this at the bottom of 14_part1.py
-# The combined file is your final 14_classify_and_display.py
 
 # ─────────────────────────────────────────────
 # DISPLAY FUNCTIONS
@@ -291,7 +380,7 @@ def print_result(filename, pred_class, confidence, probs,
     print("=" * W)
     print("  STELLAR CLASSIFICATION RESULT")
     print("=" * W)
-    print(f"  File:       {os.path.basename(filename)}")
+    print(f"  File:{os.path.basename(filename)}")
     if true_label:
         match = "CORRECT" if true_label == pred_class else "INCORRECT"
         print(f"  True label: {true_label.replace('_',' ').title()}  [{match}]")
@@ -507,5 +596,5 @@ if __name__ == "__main__":
                      save_plot=(cls == CLASS_NAMES[-1]))
 
         print("Done. Usage options:")
-        print("  Single file:  python 14_classify_and_display.py path/to/spectrum.fits")
-        print("  Batch test:   python 14_classify_and_display.py --batch")
+        print("  Single file:  python classify_and_display.py path/to/spectrum.fits")
+        print("  Batch test:   python classify_and_display.py --batch")

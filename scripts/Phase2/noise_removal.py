@@ -59,9 +59,9 @@ WHAT THIS SCRIPT DOES:
     6. Plots before/after noise removal for one spectrum per class
 
 HOW TO RUN:
-    1. Make sure 06_redshift_correction.py has finished
+    1. Make sure redshift_correction.py has finished
     2. Run:
-           python 07_noise_removal.py
+           python noise_removal.py
 
 OUTPUT FILES:
     - /data/processed/step2_noise/{label}/spec-XXXX.npz
@@ -108,7 +108,7 @@ CLASS_COLORS = {
 # ─────────────────────────────────────────────
 # SAVITZKY-GOLAY PARAMETERS
 # Adjust these if smoothing looks too aggressive
-# or too weak on your plots:
+# or too weak on the plots:
 #   - Increase window_length for more smoothing
 #   - Decrease window_length to preserve finer features
 #   - window_length MUST be odd
@@ -270,7 +270,7 @@ print(f"\nLoaded catalog: {len(master)} rows")
 
 if "redshift_filepath" not in master.columns:
     print("\nERROR: 'redshift_filepath' column not found.")
-    print("Run 06_redshift_correction.py first.")
+    print("Run redshift_correction.py first.")
     sys.exit(1)
 
 # Create output subfolders per class
@@ -402,4 +402,4 @@ print("=" * 60)
 print(f"  Cleaned spectra: {success}")
 print(f"  Output folder:   {OUT_DIR}")
 print(f"  Catalog updated: noise_filepath column added")
-print("\nNext: Run  08_normalisation.py")
+print("\nNext: Run  normalisation.py")

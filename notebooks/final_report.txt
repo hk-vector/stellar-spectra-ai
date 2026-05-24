@@ -2,7 +2,7 @@
 STELLAR SPECTRA AI -- PHASE 4 FINAL REPORT
 ============================================================
 
-Test accuracy:  94.0%
+Test accuracy:  93.0%
 Test samples:   285
 Classes:        white_dwarf, quasar, main_sequence, red_giant
 
@@ -10,32 +10,32 @@ PER-CLASS METRICS:
 ----------------------------------------
                precision    recall  f1-score   support
 
-  white_dwarf       0.96      0.88      0.92        74
-       quasar       0.95      0.95      0.95        64
-main_sequence       0.86      0.93      0.89        72
+  white_dwarf       0.94      0.89      0.92        74
+       quasar       0.98      0.88      0.93        64
+main_sequence       0.82      0.94      0.88        72
     red_giant       1.00      1.00      1.00        75
 
-     accuracy                           0.94       285
-    macro avg       0.94      0.94      0.94       285
- weighted avg       0.94      0.94      0.94       285
+     accuracy                           0.93       285
+    macro avg       0.94      0.93      0.93       285
+ weighted avg       0.94      0.93      0.93       285
 
 ROC-AUC SCORES:
 ----------------------------------------
-  white_dwarf             AUC=0.988  ███████████████████
-  quasar                  AUC=0.998  ███████████████████
-  main_sequence           AUC=0.987  ███████████████████
+  white_dwarf             AUC=0.989  ███████████████████
+  quasar                  AUC=0.999  ███████████████████
+  main_sequence           AUC=0.986  ███████████████████
   red_giant               AUC=1.000  ████████████████████
 
 CONFIDENCE ANALYSIS:
 ----------------------------------------
-  Mean confidence (correct):   93.9%
-  Mean confidence (incorrect): 72.1%  (lower = better)
+  Mean confidence (correct):   94.5%
+  Mean confidence (incorrect): 65.3%  (lower = better)
 
 CONFUSION MATRIX (row=true, col=predicted):
 ----------------------------------------
-  white_dwarf                65      1      8      0
-  quasar                      0     61      3      0
-  main_sequence               3      2     67      0
+  white_dwarf                66      1      7      0
+  quasar                      0     56      8      0
+  main_sequence               4      0     68      0
   red_giant                   0      0      0     75
 
 HEADER:  white_dwarf        quasar  main_sequenc     red_giant

@@ -49,11 +49,10 @@ WHAT THIS SCRIPT PRODUCES:
     5. Calibration plot -- are confidence scores trustworthy?
     6. Worst predictions -- which spectra confused the model
        most badly? (useful for finding labelling errors)
-    7. A final summary printed to terminal with
-       go/no-go recommendation for Phase 5 (LLM layer)
+    7. A final summary printed to terminal
 
 HOW TO RUN:
-    Run: python 13_evaluate_and_report.py
+    Run: python evaluate_and_report.py
 
 OUTPUT FILES:
     - /notebooks/roc_curves.png
@@ -177,7 +176,7 @@ for path, name in [(X_PATH, "X.npy"), (Y_PATH, "y.npy"), (MODEL_PATH, "cnn_v2.pt
     if not os.path.exists(path):
         print(f"\nERROR: {name} not found.")
         if name == "cnn_v2.pth":
-            print("Run 12_improved_training.py first.")
+            print("Run improved_training.py first.")
         sys.exit(1)
 
 X = np.load(X_PATH)
@@ -304,7 +303,7 @@ print("ROC curves saved.")
 
 # ─────────────────────────────────────────────
 # PLOT 3: Confidence distribution
-# How confident is the model on correct vs wrong predictions?
+# How confident is the model on correct vs wrong predictions
 # ─────────────────────────────────────────────
 confidence      = all_probs.max(axis=1)   # highest probability for each prediction
 correct_mask    = all_preds == all_labels
@@ -446,21 +445,6 @@ report_lines.append("")
 macro_f1 = f1_score(all_labels, all_preds, average="macro")
 min_auc  = min(auc_scores.values())
 
-report_lines.append("PHASE 5 (LLM DESCRIPTION LAYER) READINESS:")
-report_lines.append("-" * 40)
-if test_acc >= 0.80 and macro_f1 >= 0.75 and min_auc >= 0.85:
-    verdict = "GO"
-    reason  = "All metrics above threshold. Model ready for production."
-elif test_acc >= 0.70 and macro_f1 >= 0.65:
-    verdict = "CONDITIONAL GO"
-    reason  = ("Accuracy acceptable. Consider collecting more red_giant "
-               "samples or relabelling ambiguous K/M type stars before deploying.")
-else:
-    verdict = "NO GO"
-    reason  = "Accuracy below 70%. Re-examine preprocessing and class labels."
-
-report_lines.append(f"  Verdict: {verdict}")
-report_lines.append(f"  Reason:  {reason}")
 report_lines.append("")
 report_lines.append("=" * 60)
 
@@ -481,4 +465,4 @@ print("  confidence_distribution.png")
 print("  calibration_plot.png")
 print("  worst_predictions.png")
 print("  final_report.txt")
-print("\nNext: commit to GitHub then start Phase 5 (LLM description layer)")
+print("\nNext: commit to GitHub and proceed to web_interface.py")
