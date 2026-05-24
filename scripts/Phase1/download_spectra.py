@@ -14,7 +14,7 @@ OUTPUT_DIR = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\raw\red
 LOG_FILE     = "../logs/download_log.txt"
 FAILED_FILE  = "../logs/failed_downloads.txt"
 BASE_URL = "https://dr18.sdss.org/sas/dr18/spectro/redux/v5_13_2/spectra/lite"
-DELAY        = 0.5   # seconds to wait between requests — be polite to the server
+DELAY        = 0.5   # seconds to wait between requests
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs("../logs", exist_ok=True)

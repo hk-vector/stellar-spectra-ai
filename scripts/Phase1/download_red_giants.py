@@ -10,7 +10,7 @@ OUTPUT_DIR = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\raw\red
 
 # BOSS spectra use v5_13_2 path instead of 26
 BASE_URL = "https://dr18.sdss.org/sas/dr18/prior-surveys/sdss4-dr17-eboss/spectro/redux/v5_13_2/spectra/lite"
-LOG_FILE = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\logs\redgiant_v2_log.txt"
+LOG_FILE = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\logs\redgiant_log.txt"
 DELAY    = 0.5
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)

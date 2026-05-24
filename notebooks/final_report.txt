@@ -40,9 +40,5 @@ CONFUSION MATRIX (row=true, col=predicted):
 
 HEADER:  white_dwarf        quasar  main_sequenc     red_giant
 
-PHASE 5 (LLM DESCRIPTION LAYER) READINESS:
-----------------------------------------
-  Verdict: GO
-  Reason:  All metrics above threshold. Model ready for production.
 
 ============================================================

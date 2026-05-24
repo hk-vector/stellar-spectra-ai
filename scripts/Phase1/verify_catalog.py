@@ -17,7 +17,7 @@ HOW TO RUN:
     3. Navigate to your scripts folder:
            cd Desktop/stellar-spectra-ai/scripts
     4. Run:
-           python 04_verify_catalog.py
+           python verify_catalog.py
 
 OUTPUT FILES:
     - /notebooks/spectra_samples.png     — plot of one spectrum per class
@@ -106,7 +106,7 @@ print("=" * 60)
 
 if not os.path.exists(CATALOG_FILE):
     print(f"\nERROR: Could not find master_catalog.csv at:\n  {CATALOG_FILE}")
-    print("Make sure you have run build_catalog.py first.")
+    print("Make sure you have run build_master_catalog.py first.")
     sys.exit(1)
 
 master = pd.read_csv(CATALOG_FILE)
@@ -272,4 +272,4 @@ print("=" * 60)
 print(f"  Clean samples:      {len(master_clean)}")
 print(f"  Bad files removed:  {len(master) - len(master_clean)}")
 print(f"  Plots saved in:     {NOTEBOOKS}")
-print("\nNext: Run  05_backup_and_version.py")
+print("\nNext: Run  backup_and_version.py")

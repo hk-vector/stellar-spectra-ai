@@ -31,7 +31,7 @@ HOW TO RUN:
     3. Navigate to your scripts folder:
            cd Desktop/stellar-spectra-ai/scripts
     4. Run:
-           python 03_build_catalog.py
+           python build_catalog.py
 
 OUTPUT FILES:
     - /data/catalog/master_catalog.csv   ← the main output
@@ -237,7 +237,7 @@ print(f"  Rows after deduplication:           {after_dedup:>6}")
 # STEP 3D — Check which .fits files exist on disk
 #
 # We do NOT remove missing files here — that is Step 4's job
-# (04_verify_catalog.py also checks for corruption).
+# (verify_catalog.py also checks for corruption).
 # Here we just warn you so you know if the download
 # script needs to be re-run for any class.
 # ─────────────────────────────────────────────
@@ -289,7 +289,7 @@ if missing_fits:
     print(f"    {MISSING_LOG}")
     print(f"    {MISSING_LOG.replace('.txt', '.csv')}")
     print()
-    print("  TO FIX: Re-run 02_download_spectra.py using the missing CSV:")
+    print("  TO FIX: Re-run download_spectra.py using the missing CSV:")
     print(f"    CSV_FILE = '{MISSING_LOG.replace('.txt', '.csv')}'")
     print(f"    Then re-run this script.")
     print()
@@ -370,30 +370,6 @@ print(f"  Saved to: {OUTPUT_FILE}")
 print(f"  Rows:     {len(master)}")
 print(f"  Columns:  {list(master.columns)}")
 
-
-# ─────────────────────────────────────────────
-# STEP 3H — Print a preview of the first 3 rows
-# so you can visually confirm it looks correct
-# ─────────────────────────────────────────────
-print()
-print("─" * 40)
-print("PREVIEW (first 3 rows)")
-print("─" * 40)
-
-preview_cols = ["specobjid", "label", "z", "plate", "mjd", "fiberid", "filepath"]
-preview      = master[[c for c in preview_cols if c in master.columns]].head(3)
-
-# Print each row as key:value pairs so nothing wraps awkwardly
-for i, row in preview.iterrows():
-    print(f"\n  Row {i}:")
-    for col, val in row.items():
-        # Truncate long filepaths for display
-        display_val = str(val)
-        if col == "filepath" and len(display_val) > 55:
-            display_val = "..." + display_val[-52:]
-        print(f"    {col:<12}: {display_val}")
-
-
 # ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
@@ -415,9 +391,9 @@ print()
 
 if missing_fits:
     print(f"  ACTION NEEDED: {len(missing_fits)} .fits files still missing.")
-    print("  Re-run 02_download_spectra.py for those files, then")
+    print("  Re-run download_spectra.py for those files, then")
     print("  re-run this script before moving to Step 4.")
 else:
     print("  No action needed. Proceed to:")
-    print("  → python 04_verify_catalog.py")
+    print("  python verify_catalog.py")
 print()

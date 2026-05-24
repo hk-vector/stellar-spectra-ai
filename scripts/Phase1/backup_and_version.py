@@ -19,12 +19,12 @@ WHAT THIS SCRIPT DOES:
        files to external storage (Google Drive / hard drive)
 
 HOW TO RUN:
-    1. Make sure you have run 04_verify_catalog.py first
+    1. Make sure you have run verify_catalog.py first
     2. Open your terminal
     3. Navigate to your scripts folder:
            cd Desktop/stellar-spectra-ai/scripts
     4. Run:
-           python 05_backup_and_version.py
+           python backup_and_version.py
 
     NOTE: You need git installed on your computer.
           Download it free from: https://git-scm.com/downloads
@@ -105,7 +105,7 @@ print(f"  Found: {result.stdout.strip()}")
 # ─────────────────────────────────────────────
 if not os.path.exists(CATALOG_FILE):
     print(f"\n  ERROR: master_catalog.csv not found at:\n    {CATALOG_FILE}")
-    print("  Run 03_build_catalog.py and 04_verify_catalog.py first.")
+    print("  Run build_catalog.py and verify_catalog.py first.")
     sys.exit(1)
 
 master = pd.read_csv(CATALOG_FILE)
@@ -250,7 +250,7 @@ readme_content = f"""# Stellar Spectra AI
 
 ---
 
-## Phase 1 Status: ✅ Complete
+## Phase 1 Status: Complete
 
 ---
 
@@ -288,10 +288,10 @@ stellar-spectra-ai/
 │   └── class_distribution.png
 │
 ├── scripts/
-│   ├── 01_folder_setup.py     (not committed — run manually once)
-│   ├── 03_build_catalog.py
-│   ├── 04_verify_catalog.py
-│   └── 05_backup_and_version.py
+│   ├── folder_setup.py     (not committed — run manually once)
+│   ├── build_catalog.py
+│   ├── verify_catalog.py
+│   └── backup_and_version.py
 │
 ├── logs/
 │   ├── download_log.txt
@@ -352,22 +352,7 @@ they are too large. They are backed up separately to:
 
 ---
 
-## Next Steps
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Data Acquisition | ✅ Done |
-| 2 | Preprocessing (denoise, normalise, redshift correction) | ⬜ Next |
-| 3 | Feature Extraction | ⬜ |
-| 4 | Model Training (CNN / Random Forest) | ⬜ |
-| 5 | Classification Output | ⬜ |
-| 6 | LLM Description Layer | ⬜ |
-| 7 | Evaluation & Validation | ⬜ |
-| 8 | Deployment | ⬜ |
-
----
-
-*Generated automatically by 05_backup_and_version.py on {today}*
+*Generated automatically by backup_and_version.py on {today}*
 """
 
 with open(README, "w", encoding="utf-8") as f:
@@ -477,7 +462,4 @@ print('           git push -u origin main')
 print()
 print("  Your project is now versioned, documented, and backed up.")
 print("  You are ready to start Phase 2: Preprocessing.")
-print()
-print("  master_catalog.csv location:")
-print(f"    {CATALOG_FILE}")
 print()
