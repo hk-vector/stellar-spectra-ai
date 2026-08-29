@@ -1,71 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================
-PHASE 4 - STEP 2: Full Evaluation and Final Report
-=============================================================
-
-WHAT THIS SCRIPT DOES:
------------------------
-This is the final evaluation script for the classification
-pipeline. It loads the best trained model and runs a
-thorough analysis that goes beyond simple accuracy.
-
-WHY ACCURACY ALONE IS NOT ENOUGH:
------------------------------------
-Imagine a dataset with 90% quasars and 10% white dwarfs.
-A model that predicts "quasar" for everything would get
-90% accuracy but be completely useless for finding white dwarfs.
-
-We need metrics that reveal per-class performance:
-
-PRECISION: Of all spectra the model CALLED class X,
-           what fraction were actually class X?
-           High precision = few false alarms.
-
-RECALL:    Of all spectra that ARE class X,
-           what fraction did the model FIND?
-           High recall = few missed detections.
-
-F1 SCORE:  Harmonic mean of precision and recall.
-           Balances both -- a single number per class.
-           F1=1.0 is perfect, F1=0.0 is useless.
-
-ROC-AUC:   Area Under the ROC Curve. Measures how well
-           the model separates a class from all others
-           regardless of decision threshold. AUC=1.0 is
-           perfect, AUC=0.5 is random guessing.
-
-CALIBRATION: Are the model's confidence scores trustworthy?
-             If the model says "80% sure this is a quasar",
-             is it right ~80% of the time? A well-calibrated
-             model's probabilities match its actual accuracy.
-
-WHAT THIS SCRIPT PRODUCES:
-    1. Full classification report (precision/recall/F1 per class)
-    2. Confusion matrix with percentage labels
-    3. ROC curves (one per class, one-vs-rest)
-    4. Confidence distribution -- how sure is the model
-       about correct vs incorrect predictions?
-    5. Calibration plot -- are confidence scores trustworthy?
-    6. Worst predictions -- which spectra confused the model
-       most badly? (useful for finding labelling errors)
-    7. A final summary printed to terminal
-
-HOW TO RUN:
-    Run: python evaluate_and_report.py
-
-OUTPUT FILES:
-    - /notebooks/roc_curves.png
-    - /notebooks/confidence_distribution.png
-    - /notebooks/calibration_plot.png
-    - /notebooks/worst_predictions.png
-    - /notebooks/final_report.txt   (plain text summary)
-
-REQUIRES:
-    pip install torch scikit-learn numpy matplotlib tqdm
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -249,8 +181,8 @@ for ax, data, fmt, title in [
     plt.colorbar(im, ax=ax)
     ax.set_xticks(range(N_CLASSES))
     ax.set_yticks(range(N_CLASSES))
-    ax.set_xticklabels([c.replace("_", "\n") for c in CLASS_NAMES], fontsize=9)
-    ax.set_yticklabels([c.replace("_", " ")  for c in CLASS_NAMES], fontsize=9)
+    ax.set_xticklabels([c.replace("_", "\n").title() for c in CLASS_NAMES], fontsize=9)
+    ax.set_yticklabels([c.replace("_", " ").title()  for c in CLASS_NAMES], fontsize=9)
     ax.set_xlabel("Predicted", fontsize=11)
     ax.set_ylabel("True",      fontsize=11)
     ax.set_title(title, fontsize=11, fontweight="bold")
@@ -410,43 +342,48 @@ print("Worst predictions plot saved.")
 # GENERATE PLAIN TEXT REPORT
 # ─────────────────────────────────────────────
 report_lines = []
-report_lines.append("=" * 60)
-report_lines.append("STELLAR SPECTRA AI -- PHASE 4 FINAL REPORT")
-report_lines.append("=" * 60)
+report_lines.append("=" * 85)
+report_lines.append("STELLAR SPECTRA AI -- FINAL REPORT")
+report_lines.append("=" * 85)
 report_lines.append("")
 report_lines.append(f"Test accuracy:  {test_acc*100:.1f}%")
 report_lines.append(f"Test samples:   {len(all_labels)}")
 report_lines.append(f"Classes:        {', '.join(CLASS_NAMES)}")
 report_lines.append("")
 report_lines.append("PER-CLASS METRICS:")
-report_lines.append("-" * 40)
+report_lines.append("-" * 85)
 report_lines.append(classification_report(all_labels, all_preds, target_names=CLASS_NAMES))
 report_lines.append("ROC-AUC SCORES:")
-report_lines.append("-" * 40)
+report_lines.append("-" * 85)
 for name, score in auc_scores.items():
     bar = "█" * int(score * 20)
     report_lines.append(f"  {name:<22}  AUC={score:.3f}  {bar}")
 report_lines.append("")
 report_lines.append("CONFIDENCE ANALYSIS:")
-report_lines.append("-" * 40)
+report_lines.append("-" * 85)
 report_lines.append(f"  Mean confidence (correct):   {conf_correct.mean()*100:.1f}%")
 report_lines.append(f"  Mean confidence (incorrect): {conf_wrong.mean()*100:.1f}%  (lower = better)")
 report_lines.append("")
-report_lines.append("CONFUSION MATRIX (row=true, col=predicted):")
-report_lines.append("-" * 40)
+report_lines.append("CONFUSION MATRIX:")
+report_lines.append("-" * 85)
+ROW_LABEL_WIDTH = 18
+COL_WIDTH = 14
+GAP = "   "
+header_cols = [f"{c[:COL_WIDTH]:>{COL_WIDTH}}" for c in CLASS_NAMES]
+header_row = f"{'HEADER:':<{ROW_LABEL_WIDTH}}" + GAP.join(header_cols)
+report_lines.append(header_row)
+report_lines.append("")
 for i, row_name in enumerate(CLASS_NAMES):
-    row_str = "  ".join([f"{cm[i,j]:>5}" for j in range(N_CLASSES)])
-    report_lines.append(f"  {row_name:<22}  {row_str}")
-report_lines.append("")
-report_lines.append("HEADER: " + "  ".join([f"{c[:12]:>12}" for c in CLASS_NAMES]))
-report_lines.append("")
+    data_cols = [f"{cm[i,j]:>{COL_WIDTH}}" for j in range(N_CLASSES)]
+    row_str = GAP.join(data_cols)
+    report_lines.append(f"  {row_name:<{ROW_LABEL_WIDTH-2}}{row_str}")
 
 # Go/no-go for Phase 5
 macro_f1 = f1_score(all_labels, all_preds, average="macro")
 min_auc  = min(auc_scores.values())
 
 report_lines.append("")
-report_lines.append("=" * 60)
+report_lines.append("=" * 85)
 
 report_text = "\n".join(report_lines)
 print("\n" + report_text)
@@ -458,11 +395,3 @@ print(f"\nReport saved to:\n  {REPORT_PATH}")
 print("\n" + "=" * 60)
 print("PHASE 4 COMPLETE")
 print("=" * 60)
-print("\nAll output files saved to /notebooks/:")
-print("  confusion_matrix_v2.png")
-print("  roc_curves.png")
-print("  confidence_distribution.png")
-print("  calibration_plot.png")
-print("  worst_predictions.png")
-print("  final_report.txt")
-print("\nNext: commit to GitHub and proceed to web_interface.py")

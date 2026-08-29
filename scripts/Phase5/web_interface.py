@@ -1,34 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================
-PHASE 5: Web Interface (Gradio)
-=============================================================
-
-WHAT THIS DOES:
-----------------
-Launches a local web app where a user can:
-    1. Upload any SDSS .fits spectrum file
-    2. Instantly see the classification result
-    3. See all class probabilities as a bar chart
-    4. See all physical measurements
-    5. See the spectrum plotted with line markers
-
-HOW TO RUN:
-    pip install gradio
-    python web_interface.py
-
-Then open your browser at:
-    http://localhost:7860
-
-To share with someone else on the internet (temporary link):
-    Change SHARE = False  to  SHARE = True
-    Gradio will generate a public URL valid for 72 hours.
-
-REQUIRES:
-    pip install gradio torch astropy scipy numpy matplotlib pandas
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -63,10 +32,11 @@ N_POINTS    = 3000
 TARGET_GRID = np.linspace(WAVE_MIN, WAVE_MAX, N_POINTS, dtype=np.float32)
 
 CLASS_COLORS = {
-    "white_dwarf":   "#4A90D9",
-    "quasar":        "#E8593C",
-    "main_sequence": "#3BAD75",
-    "red_giant":     "#D4A017",
+    "white_dwarf":      "#4A90D9",
+    "quasar":           "#E8593C",
+    "main_sequence":    "#3BAD75",
+    "red_giant":        "#D4A017",
+    "symbiotic_binary": "#9B59B6"
 }
 
 CLASS_DESCRIPTIONS = {
@@ -97,6 +67,11 @@ CLASS_DESCRIPTIONS = {
         "cool, luminous, and show strong absorption from neutral metals: calcium, "
         "sodium, and magnesium. Their red-dominated continuum reflects their low "
         "surface temperature (3500–5500K).",
+
+    "symbiotic_binary": 
+        "Symbiotic stars are binary systems where a cool Red Giant transfers material "
+        "via winds or an accretion disk onto a hot White Dwarf companion. This creates "
+        "an overlapping signature containing both hot and cold indicators.",
 }
 
 SPECTRAL_LINES = {
@@ -402,9 +377,26 @@ def format_measurements(measurements, pred_class, confidence):
     else:
         z_str   = f"z = {m['redshift']:.5f}  (local object)"
 
+    if pred_class == "symbiotic_binary":
+        display_title = "EXOTIC SYMBIOTIC BINARY SYSTEM"
+        binary_alert = (
+            "<div style='background-color: rgba(155, 89, 182, 0.1); padding: 15px; "
+            "border-left: 5px solid #9B59B6; border-radius: 4px; margin-bottom: 20px; color: #ddeeff;'>\n"
+            "<strong>BIFURCATION MODEL ALERT:</strong><br>\n"
+            "This spectrum concurrently exhibits cold Red Giant molecular features alongside an "
+            "anomalous blue/UV excess signature. The engine has bypassed solitary single-star "
+            "classification models.\n"
+            "</div>"
+        )
+    else:
+        display_title = pred_class.replace("_", " ").upper()
+        binary_alert = ""
+
     md = f"""
-## Classification: {pred_class.replace("_", " ").upper()}
+## Classification: {display_title}
 **Confidence: {confidence*100:.1f}%**
+
+{binary_alert}
 
 ---
 
@@ -450,16 +442,29 @@ def format_measurements(measurements, pred_class, confidence):
 # ─────────────────────────────────────────────
 def classify_uploaded_file(fits_file):
     """
-    This is the function Gradio calls when a user uploads a file.
-    fits_file: the uploaded file object from Gradio
+    This is the function Gradio calls when a user uploads a file or multiple files.
+    fits_file: can be a single file path string, a Gradio file object, or a list of them.
 
-    Returns: spectrum_plot, prob_chart, measurements_markdown
+    Returns: spectrum_fig, prob_fig, info_md
     """
     if fits_file is None:
         return None, None, "## Please upload a .fits file to begin."
 
-    # Gradio gives us the file path directly
-    filepath = fits_file.name if hasattr(fits_file, "name") else str(fits_file)
+    # ─────────────────────────────────────────────────────────────
+    # Safely intercept multi-file list objects
+    # ─────────────────────────────────────────────────────────────
+    if isinstance(fits_file, list):
+        if len(fits_file) == 0:
+            return None, None, "## Please upload a .fits file to begin."
+        # Grab the first file from the batch list to display in the UI dashboard
+        active_file = fits_file[0]
+        batch_msg = f"> **Batch Upload Detected:** You uploaded {len(fits_file)} files. Displaying metrics for the first file below.\n\n"
+    else:
+        active_file = fits_file
+        batch_msg = ""
+
+    # Pull the path safely out of the object
+    filepath = active_file.name if hasattr(active_file, "name") else str(active_file)
 
     # Read and preprocess
     try:
@@ -476,10 +481,18 @@ def classify_uploaded_file(fits_file):
         logits = MODEL(tensor)
         probs  = torch.softmax(logits, dim=1).cpu().numpy()[0]
 
-    pred_idx   = int(np.argmax(probs))
-    pred_class = CLASS_NAMES[pred_idx]
-    confidence = float(probs[pred_idx])
-    prob_dict  = {CLASS_NAMES[i]: float(probs[i]) for i in range(N_CLASSES)}
+    prob_dict = {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
+
+    rg_score = prob_dict.get('red_giant', 0.0)
+    wd_score = prob_dict.get('white_dwarf', 0.0)
+    
+    if rg_score > 0.35 and wd_score > 0.10:
+        pred_class = "symbiotic_binary"
+        confidence = float(rg_score + wd_score)
+    else:
+        pred_idx   = int(np.argmax(probs))
+        pred_class = CLASS_NAMES[pred_idx]
+        confidence = float(probs[pred_idx])
 
     # Physical measurements
     measurements = get_measurements(flux, z)
@@ -487,7 +500,9 @@ def classify_uploaded_file(fits_file):
     # Generate outputs
     spectrum_fig = make_spectrum_plot(flux, pred_class, confidence, measurements)
     prob_fig     = make_prob_chart(prob_dict)
-    info_md      = format_measurements(measurements, pred_class, confidence)
+    
+    # Generate the markdown data and attach the batch notification if multiple files were sent
+    info_md      = batch_msg + format_measurements(measurements, pred_class, confidence)
 
     return spectrum_fig, prob_fig, info_md
 
@@ -517,7 +532,8 @@ with gr.Blocks(css=css, title="Stellar Spectra Classifier") as app:
             file_input = gr.File(
                 label="Upload .fits spectrum file",
                 file_types=[".fits", ".fit"],
-                type="filepath"
+                type="filepath",
+                file_count="multiple"
             )
             submit_btn = gr.Button("Classify Spectrum", variant="primary", size="lg")
 

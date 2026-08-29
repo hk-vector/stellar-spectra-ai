@@ -1,70 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================
-PHASE 4 - STEP 1: Improved Model Training
-=============================================================
-
-WHAT IS DIFFERENT IN PHASE 4:
--------------------------------
-1. Lower initial learning rate (1e-4 instead of 1e-3)
-   Smaller steps = more stable convergence, no spiking.
-
-2. Warmup for first 5 epochs
-   Learning rate starts very low and gradually rises to
-   the target rate. Prevents the wild early-epoch instability
-   seen in Phase 3 (epochs 5, 11 spiking to val_loss > 3).
-
-3. Cosine annealing scheduler
-   After warmup, the learning rate follows a smooth cosine
-   curve downward. Better than ReduceLROnPlateau for CNNs.
-
-4. Class weights
-   We compute how underrepresented each class is and tell
-   the loss function to penalise mistakes on rare classes
-   more heavily. Red giant errors cost more than quasar
-   errors, forcing the model to pay attention to hard classes.
-
-5. Deeper architecture with residual connections
-   We add skip connections (ResNet-style) that let gradients
-   flow more easily through the network. Prevents the gradient
-   from vanishing in deep layers and improves convergence.
-
-6. Data augmentation
-   We add small random noise and flux shifts to training
-   spectra each epoch. This makes the model more robust and
-   acts like having more training data.
-
-7. More epochs (100) with longer patience (12)
-   Phase 3 was still improving at epoch 50. We give it more
-   room to converge properly.
-
-WHAT THIS SCRIPT DOES:
-    1. Loads X.npy and y.npy
-    2. Applies class weight computation
-    3. Builds improved CNN with residual connections
-    4. Trains with warmup + cosine annealing + augmentation
-    5. Evaluates on test set with full metrics
-    6. Saves improved model to /models/cnn_v2.pth
-    7. Re-extracts features with the better model
-    8. Plots training curves and confusion matrix
-
-HOW TO RUN:
-    Run:   python improved_training.py
-    Time:  3-6 minutes (varies with systems)
-
-OUTPUT FILES:
-    - /models/cnn_v2.pth
-    - /data/processed/features_v2.npy
-    - /data/processed/features_v2_labels.npy
-    - /notebooks/training_curves_v2.png
-    - /notebooks/confusion_matrix_v2.png
-    - /notebooks/per_class_metrics.png
-
-REQUIRES:
-    pip install torch scikit-learn numpy pandas matplotlib tqdm
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -395,28 +328,15 @@ test_loader  = DataLoader(to_tensors(X_test,  y_test),  batch_size=BATCH_SIZE, s
 # BUILD MODEL
 # ─────────────────────────────────────────────
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"\nUsing device: {device}")
-if device.type == "cuda":
-    print(f"  GPU: {torch.cuda.get_device_name(0)}")
-
 model = ImprovedStellarCNN(input_length=X.shape[1], n_classes=N_CLASSES).to(device)
 
-# Weighted loss function -- penalises red_giant errors more
-weights_tensor = torch.tensor(class_weights_arr, dtype=torch.float32).to(device)
-criterion      = nn.CrossEntropyLoss(weight=weights_tensor)
-optimizer      = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-4)
-
-total_params = sum(p.numel() for p in model.parameters())
-print(f"Model parameters: {total_params:,}")
-
+criterion = nn.CrossEntropyLoss(label_smoothing=0.02)
+optimizer = optim.AdamW(model.parameters(), lr=0.0, weight_decay=1e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
 
 # ─────────────────────────────────────────────
 # TRAINING LOOP
 # ─────────────────────────────────────────────
-print(f"\nTraining for up to {MAX_EPOCHS} epochs...")
-print(f"Warmup: {WARMUP_EPOCHS} epochs | Early stop patience: {PATIENCE}")
-print("-" * 65)
-
 train_losses, val_losses = [], []
 train_accs,   val_accs   = [], []
 lr_history               = []
@@ -425,11 +345,9 @@ epochs_no_improve        = 0
 best_epoch               = 0
 
 for epoch in range(1, MAX_EPOCHS + 1):
-
-    # Update learning rate
     current_lr = get_lr(epoch, WARMUP_EPOCHS, MAX_EPOCHS, LEARNING_RATE)
     for param_group in optimizer.param_groups:
-        param_group["lr"] = current_lr
+        param_group['lr'] = current_lr
     lr_history.append(current_lr)
 
     # ── Train ─────────────────────────────────
@@ -439,19 +357,14 @@ for epoch in range(1, MAX_EPOCHS + 1):
     for X_batch, y_batch in train_loader:
         X_batch = X_batch.to(device)
         y_batch = y_batch.to(device)
-
-        # Apply augmentation to training batches only
         X_batch = augment_batch(X_batch)
 
         optimizer.zero_grad()
         outputs = model(X_batch)
         loss    = criterion(outputs, y_batch)
         loss.backward()
-
-        # Gradient clipping -- prevents exploding gradients
-        # (another cause of the Phase 3 val_loss spikes)
+        
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-
         optimizer.step()
 
         run_loss += loss.item() * len(y_batch)
@@ -459,7 +372,7 @@ for epoch in range(1, MAX_EPOCHS + 1):
         total    += len(y_batch)
 
     train_loss = run_loss / total
-    train_acc  = correct  / total
+    train_acc  = correct / total
 
     # ── Validate ──────────────────────────────
     model.eval()
@@ -476,14 +389,15 @@ for epoch in range(1, MAX_EPOCHS + 1):
             val_total    += len(y_batch)
 
     val_loss = val_loss_sum / val_total
-    val_acc  = val_correct  / val_total
+    val_acc  = val_correct / val_total
+
+    scheduler.step(val_loss)
 
     train_losses.append(train_loss)
     val_losses.append(val_loss)
     train_accs.append(train_acc)
     val_accs.append(val_acc)
 
-    # Save best model
     improved = ""
     if val_loss < best_val_loss:
         best_val_loss     = val_loss
@@ -501,7 +415,6 @@ for epoch in range(1, MAX_EPOCHS + 1):
 
     if epochs_no_improve >= PATIENCE:
         print(f"\n  Early stopping at epoch {epoch}.")
-        print(f"  Best model: epoch {best_epoch}  val_loss={best_val_loss:.4f}")
         break
 
 print(f"\nBest model saved to: {MODEL_PATH}")
@@ -661,7 +574,7 @@ bars_f = ax.bar(x + width,  [metrics[n]["f1"]        for n in CLASS_NAMES],
                 width, label="F1 Score",  color="#3BAD75", alpha=0.85)
 
 ax.set_xticks(x)
-ax.set_xticklabels([c.replace("_", "\n") for c in CLASS_NAMES], fontsize=11)
+ax.set_xticklabels([c.replace("_", "\n").title() for c in CLASS_NAMES], fontsize=11)
 ax.set_ylabel("Score")
 ax.set_ylim(0, 1.15)
 ax.set_title("Per-Class Metrics  --  Phase 4 vs Phase 3 baseline",

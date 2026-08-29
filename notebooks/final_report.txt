@@ -1,44 +1,43 @@
-============================================================
-STELLAR SPECTRA AI -- PHASE 4 FINAL REPORT
-============================================================
+=====================================================================================
+STELLAR SPECTRA AI -- FINAL REPORT
+=====================================================================================
 
-Test accuracy:  93.0%
+Test accuracy:  94.0%
 Test samples:   285
 Classes:        white_dwarf, quasar, main_sequence, red_giant
 
 PER-CLASS METRICS:
-----------------------------------------
+-------------------------------------------------------------------------------------
                precision    recall  f1-score   support
 
-  white_dwarf       0.94      0.89      0.92        74
-       quasar       0.98      0.88      0.93        64
-main_sequence       0.82      0.94      0.88        72
+  white_dwarf       0.94      0.86      0.90        74
+       quasar       0.94      1.00      0.97        64
+main_sequence       0.88      0.90      0.89        72
     red_giant       1.00      1.00      1.00        75
 
-     accuracy                           0.93       285
-    macro avg       0.94      0.93      0.93       285
- weighted avg       0.94      0.93      0.93       285
+     accuracy                           0.94       285
+    macro avg       0.94      0.94      0.94       285
+ weighted avg       0.94      0.94      0.94       285
 
 ROC-AUC SCORES:
-----------------------------------------
-  white_dwarf             AUC=0.989  ███████████████████
-  quasar                  AUC=0.999  ███████████████████
-  main_sequence           AUC=0.986  ███████████████████
+-------------------------------------------------------------------------------------
+  white_dwarf             AUC=0.987  ███████████████████
+  quasar                  AUC=0.997  ███████████████████
+  main_sequence           AUC=0.989  ███████████████████
   red_giant               AUC=1.000  ████████████████████
 
 CONFIDENCE ANALYSIS:
-----------------------------------------
-  Mean confidence (correct):   94.5%
-  Mean confidence (incorrect): 65.3%  (lower = better)
+-------------------------------------------------------------------------------------
+  Mean confidence (correct):   92.6%
+  Mean confidence (incorrect): 68.4%  (lower = better)
 
-CONFUSION MATRIX (row=true, col=predicted):
-----------------------------------------
-  white_dwarf                66      1      7      0
-  quasar                      0     56      8      0
-  main_sequence               4      0     68      0
-  red_giant                   0      0      0     75
+CONFUSION MATRIX:
+-------------------------------------------------------------------------------------
+HEADER:              white_dwarf           quasar    main_sequence        red_giant
 
-HEADER:  white_dwarf        quasar  main_sequenc     red_giant
+  white_dwarf                 64                1                9                0
+  quasar                       0               64                0                0
+  main_sequence                4                3               65                0
+  red_giant                    0                0                0               75
 
-
-============================================================
+=====================================================================================

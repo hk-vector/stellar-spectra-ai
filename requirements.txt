@@ -1,0 +1,11 @@
+astropy
+pandas
+numpy
+matplotlib
+scipy
+scikit-learn
+torch
+torchvision
+tqdm
+gitpython
+gradio

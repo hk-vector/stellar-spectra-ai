@@ -1,105 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================
-PHASE 3 - STEP 1: Build the CNN Feature Extractor
-=============================================================
-
-WHAT IS A CNN AND WHY USE IT FOR SPECTRA?
-------------------------------------------
-A Convolutional Neural Network (CNN) was originally invented
-for images, but it works beautifully on 1D data like spectra.
-
-Think of a spectrum as a 1D image -- a row of 3000 pixels
-where each pixel is a flux value at a specific wavelength.
-A CNN slides small filters (called kernels) across this row,
-learning to detect patterns at different scales:
-
-    Small kernels (width ~5):  detect sharp absorption line dips
-    Medium kernels (width ~21): detect line profiles and widths
-    Large kernels (width ~51): detect broad continuum shapes
-
-The key advantage over hand-crafted features:
-    You do NOT need to tell the CNN which lines to look at.
-    It discovers the most useful patterns by itself during
-    training. It may find patterns you never thought of.
-
-HOW THE CNN IS STRUCTURED:
-----------------------------
-Input: flux array of shape (3000,) -- one spectrum
-
-Block 1:  Conv1D(filters=32,  kernel=11) -> BatchNorm -> ReLU -> MaxPool(2)
-Block 2:  Conv1D(filters=64,  kernel=7)  -> BatchNorm -> ReLU -> MaxPool(2)
-Block 3:  Conv1D(filters=128, kernel=5)  -> BatchNorm -> ReLU -> MaxPool(2)
-Block 4:  Conv1D(filters=256, kernel=3)  -> BatchNorm -> ReLU -> GlobalAvgPool
-
-Flatten -> Dense(128) -> Dropout(0.4) -> Dense(64) -> Dropout(0.3)
-       -> Output Dense(4) -> Softmax
-
-Output: 4 probability values (one per class)
-        e.g. [0.02, 0.91, 0.04, 0.03]
-        meaning: 91% chance this is a quasar
-
-WHAT EACH LAYER DOES:
-----------------------
-Conv1D      -- slides filters across the spectrum to detect local patterns
-BatchNorm   -- normalises activations so training is stable and fast
-ReLU        -- activation function: keeps positive values, zeros negatives
-MaxPool     -- downsamples by taking the max value in each window,
-               reducing length and making features translation-invariant
-GlobalAvgPool -- collapses the entire spatial dimension to one value per filter
-Dense       -- fully connected layer that combines all detected features
-Dropout     -- randomly zeros some neurons during training to prevent
-               the model from memorising the training data (overfitting)
-Softmax     -- converts raw scores to probabilities that sum to 1.0
-
-WHAT IS THE FEATURE EXTRACTOR (for Phase 3)?
-----------------------------------------------
-We take the CNN above and CUT IT just before the final output layer.
-The output of the Dense(64) layer is a 64-dimensional vector --
-this is the LEARNED FEATURE REPRESENTATION of the spectrum.
-
-Instead of raw 3000-point flux values, each spectrum is now
-described by 64 numbers that the CNN has learned are most
-useful for distinguishing stellar classes.
-
-These 64-dimensional vectors are what we:
-    1. Save as features.npy (Phase 3 output)
-    2. Visualise with t-SNE and PCA (Step 2)
-    3. Pass into the final classifier (Phase 4)
-
-WHAT THIS SCRIPT DOES:
-    1. Loads X.npy and y.npy from Phase 2
-    2. Splits into train (70%) / validation (15%) / test (15%)
-    3. Builds the CNN architecture in PyTorch
-    4. Trains the CNN for up to 50 epochs with early stopping
-    5. Saves the trained model weights
-    6. Extracts 64-dimensional features for every spectrum
-    7. Saves features.npy and the label array
-    8. Plots training/validation loss and accuracy curves
-
-HOW TO RUN:
-    1. Make sure Phase 2 is complete (X.npy and y.npy exist)
-    2. Install PyTorch:
-           pip install torch torchvision
-       If you have an NVIDIA GPU also run:
-           pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-    3. Run:
-           python cnn_feature_extractor.py
-
-       Training takes 5-15 minutes on CPU, 1-3 minutes on GPU.
-
-OUTPUT FILES:
-    - /models/cnn_feature_extractor.pth   -- trained model weights
-    - /data/processed/features.npy        -- shape (n_samples, 64)
-    - /data/processed/features_labels.npy -- shape (n_samples,) integer labels
-    - /notebooks/training_curves.png      -- loss and accuracy over epochs
-    - /notebooks/confusion_matrix.png     -- per-class prediction accuracy
-
-REQUIRES:
-    pip install torch numpy pandas matplotlib scikit-learn tqdm
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -137,7 +35,6 @@ FEAT_LABELS_PATH= os.path.join(PROCESSED_DIR, "features_labels.npy")
 # ─────────────────────────────────────────────
 # HYPERPARAMETERS
 # These control how training behaves.
-# You can tune them later but defaults work well.
 # ─────────────────────────────────────────────
 BATCH_SIZE    = 32      # how many spectra to process at once
 LEARNING_RATE = 1e-3    # how fast the model updates its weights
@@ -157,7 +54,6 @@ CLASS_COLORS = {
     3: "#D4A017",   # red_giant
 }
 
-
 # ─────────────────────────────────────────────
 # CNN ARCHITECTURE
 # ─────────────────────────────────────────────
@@ -173,9 +69,6 @@ class StellarCNN(nn.Module):
     The final layers produce:
         - A 64-dimensional feature vector (the learned representation)
         - A 4-class probability distribution (the classification output)
-
-    We separate these two outputs so we can use the same model for
-    both classification (Phase 4) and feature extraction (Phase 3).
     """
 
     def __init__(self, input_length=3000, n_classes=4):
@@ -257,7 +150,6 @@ class StellarCNN(nn.Module):
         x = self.feature_layers(x)
         return x
 
-
 # ─────────────────────────────────────────────
 # LOAD DATA
 # ─────────────────────────────────────────────
@@ -289,18 +181,8 @@ if np.isnan(X).any() or np.isinf(X).any():
     print("Replacing with 0 -- consider re-running Phase 2 if many affected.")
     X = np.nan_to_num(X, nan=0.0, posinf=3.0, neginf=0.0)
 
-
 # ─────────────────────────────────────────────
 # TRAIN / VALIDATION / TEST SPLIT
-#
-# We split the data into three sets:
-#   Train (70%)      -- model learns from these
-#   Validation (15%) -- we check progress during training
-#                       but NEVER train on these
-#   Test (15%)       -- final evaluation AFTER training
-#                       completely untouched until the end
-#
-# stratify=y means each split has the same class proportions
 # ─────────────────────────────────────────────
 X_train, X_temp, y_train, y_temp = train_test_split(
     X, y, test_size=0.30, random_state=RANDOM_SEED, stratify=y
@@ -313,7 +195,6 @@ print(f"\nData split:")
 print(f"  Train:      {len(X_train)} samples (70%)")
 print(f"  Validation: {len(X_val)}   samples (15%)")
 print(f"  Test:       {len(X_test)}  samples (15%)")
-
 
 # ─────────────────────────────────────────────
 # PREPARE PYTORCH DATASETS
@@ -336,16 +217,10 @@ train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
 val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False)
 test_loader  = DataLoader(test_ds,  batch_size=BATCH_SIZE, shuffle=False)
 
-
-# ─────────────────────────────────────────────
-# DEVICE SELECTION
-# Uses GPU automatically if available, else CPU
-# ─────────────────────────────────────────────
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"\nUsing device: {device}")
 if device.type == "cuda":
     print(f"  GPU: {torch.cuda.get_device_name(0)}")
-
 
 # ─────────────────────────────────────────────
 # BUILD MODEL, LOSS FUNCTION, OPTIMISER
@@ -362,7 +237,6 @@ scheduler = optim.lr_scheduler.ReduceLROnPlateau(
 
 total_params = sum(p.numel() for p in model.parameters())
 print(f"\nModel parameters: {total_params:,}")
-
 
 # ─────────────────────────────────────────────
 # TRAINING LOOP
@@ -455,10 +329,8 @@ for epoch in range(1, MAX_EPOCHS + 1):
 print(f"\nBest validation loss: {best_val_loss:.4f} at epoch {best_epoch}")
 print(f"Model saved to: {MODEL_PATH}")
 
-
 # ─────────────────────────────────────────────
 # EVALUATE ON TEST SET
-# Load the best saved weights before evaluating
 # ─────────────────────────────────────────────
 print("\nEvaluating on held-out test set...")
 model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
@@ -481,7 +353,6 @@ test_acc = (all_preds == all_labels).mean()
 print(f"\nTest accuracy: {test_acc:.4f}  ({test_acc*100:.1f}%)")
 print()
 print(classification_report(all_labels, all_preds, target_names=CLASS_NAMES))
-
 
 # ─────────────────────────────────────────────
 # EXTRACT FEATURES FOR ALL SPECTRA
@@ -518,7 +389,6 @@ np.save(FEAT_LABELS_PATH, feat_labels)
 print(f"\nFeatures shape: {features.shape}  (samples x 64 feature dims)")
 print(f"Saved to: {FEATURES_PATH}")
 
-
 # ─────────────────────────────────────────────
 # PLOT 1: Training and validation curves
 # ─────────────────────────────────────────────
@@ -553,7 +423,6 @@ plt.savefig(curves_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"\nTraining curves saved to:\n  {curves_path}")
 
-
 # ─────────────────────────────────────────────
 # PLOT 2: Confusion matrix
 # ─────────────────────────────────────────────
@@ -565,8 +434,8 @@ plt.colorbar(im, ax=ax)
 
 ax.set_xticks(range(len(CLASS_NAMES)))
 ax.set_yticks(range(len(CLASS_NAMES)))
-ax.set_xticklabels([c.replace("_", "\n") for c in CLASS_NAMES], fontsize=10)
-ax.set_yticklabels([c.replace("_", " ") for c in CLASS_NAMES], fontsize=10)
+ax.set_xticklabels([c.replace("_", "\n").title() for c in CLASS_NAMES], fontsize=10)
+ax.set_yticklabels([c.replace("_", " ").title()  for c in CLASS_NAMES], fontsize=10)
 ax.set_xlabel("Predicted Class", fontsize=12)
 ax.set_ylabel("True Class",      fontsize=12)
 ax.set_title(f"Confusion Matrix -- Test Accuracy: {test_acc*100:.1f}%",
@@ -591,6 +460,4 @@ print("STEP 1 COMPLETE")
 print("=" * 60)
 print(f"  Test accuracy:    {test_acc*100:.1f}%")
 print(f"  Features shape:   {features.shape}")
-print(f"  Model saved:      {MODEL_PATH}")
-print(f"  Features saved:   {FEATURES_PATH}")
 print("\nNext: Run  visualise_features.py")

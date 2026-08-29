@@ -1,101 +1,3 @@
-r"""
-=============================================================
-PHASE 5 - STEP 1: Classify and Display Results
-=============================================================
-
-WHAT THIS SCRIPT DOES:
-------------------------
-Takes any raw SDSS .fits spectrum file, runs it through the
-complete preprocessing and classification pipeline, measures
-physical features from the spectrum, and displays a clean
-formatted result directly in your terminal.
-
-No API keys, no internet connection, no browser needed.
-Everything runs locally using the trained CNN model.
-
-THE COMPLETE PIPELINE INSIDE THIS SCRIPT:
--------------------------------------------
-Step 1: Read the .fits file using astropy
-        - Extracts wavelength array, flux array
-        - Reads redshift z from SPECOBJ table (not COADD header)
-            This is critical -- SDSS DR18 stores z in SPECOBJ
-
-Step 2: Redshift correction
-        - wavelength_rest = wavelength_observed / (1 + z)
-        - Essential for quasars which can have z > 2
-
-Step 3: Wavelength clipping
-        - Keeps only 3500-10000 Angstrom range
-        - Removes edge data that confuses the normaliser
-
-Step 4: Savitzky-Golay noise smoothing
-        - window=11, polyorder=3
-        - Removes pixel noise while preserving line shapes
-
-Step 5: Continuum normalisation
-        - Iterative spline fit excludes absorption lines
-        - Divides flux by continuum so baseline = 1.0
-
-Step 6: Resampling to fixed grid
-        - Interpolates to exactly 3000 points (3800-9200 A)
-        - Required because CNN needs fixed-length input
-
-Step 7: CNN classification
-        - Passes flux through trained ResNet CNN
-        - Returns 4 class probability scores
-
-Step 8: Physical measurements
-        - Colour index (blue/red flux ratio)
-        - Equivalent widths of 7 spectral lines
-        - Signal-to-noise ratio
-        - Emission line detection
-        - Temperature class estimate
-
-Step 9: Display formatted results in terminal
-        - Class name and confidence
-        - Probability bar chart for all classes
-        - Physical measurements table
-        - Spectral line strengths
-        - Plain-English description of the class
-
-HOW TO RUN:
-
-    Option A -- classify a specific .fits file:
-        python classify_and_display.py "path\to\spectrum.fits"
-        Example:
-        python classify_and_display.py "C:\Users\Harshit\OneDrive\
-        Desktop\stellar-spectra-ai\data\raw\white_dwarf\spec-0266-51602-0001.fits"
-
-    Option B -- auto mode (no argument needed):
-        python classify_and_display.py
-        Automatically picks one spectrum from each class in
-        your catalog and classifies all four.
-
-    Option C -- batch mode (tests 5 per class, saves CSV):
-        python classify_and_display.py --batch
-        Classifies 5 random spectra from each class.
-        Saves results to /notebooks/batch_results.csv
-        Prints overall accuracy at the end.
-
-OUTPUT FILES:
-    - /notebooks/spectrum_plot.png
-      Plot of the last classified spectrum showing normalised
-      flux with all spectral line positions marked.
-
-    - /notebooks/classification_result.json
-      Full result of the last single-file classification
-      including all probabilities and measurements.
-
-    - /notebooks/batch_results.csv  (batch mode only)
-      One row per spectrum with: file name, true label,
-      predicted class, confidence, all four class probabilities,
-      and equivalent widths of all seven spectral lines.
-
-REQUIRES:
-    pip install torch astropy scipy numpy matplotlib pandas
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -130,6 +32,9 @@ TARGET_GRID = np.linspace(WAVE_MIN, WAVE_MAX, N_POINTS, dtype=np.float32)
 # ─────────────────────────────────────────────
 # CLASS INFO
 # ─────────────────────────────────────────────
+
+# Add another key:value pair here if u have addded some other class
+
 CLASS_DESCRIPTIONS = {
     "white_dwarf": (
         "White dwarfs are the dense remnant cores of stars like our Sun\n"
@@ -153,13 +58,19 @@ CLASS_DESCRIPTIONS = {
         "    their core hydrogen. Identified by strong calcium and sodium\n"
         "    absorption lines and a red-dominated continuum."
     ),
+    "symbiotic_binary": ("Symbiotic stars are binary systems where a cool\n"
+    "Red Giant transfers material via winds or an accretion disk onto a hot\n"
+    "White Dwarf companion. This creates an overlapping signature containing\n"
+    "both hot and cold indicators."
+    ),
 }
 
 CLASS_COLORS = {
-    "white_dwarf":   "#4A90D9",
-    "quasar":        "#E8593C",
-    "main_sequence": "#3BAD75",
-    "red_giant":     "#D4A017",
+    "white_dwarf":      "#4A90D9",
+    "quasar":           "#E8593C",
+    "main_sequence":    "#3BAD75",
+    "red_giant":        "#D4A017",
+    "symbiotic_binary": "#9B59B6",
 }
 
 SPECTRAL_LINES = {
@@ -384,7 +295,13 @@ def print_result(filename, pred_class, confidence, probs,
     if true_label:
         match = "CORRECT" if true_label == pred_class else "INCORRECT"
         print(f"  True label: {true_label.replace('_',' ').title()}  [{match}]")
-    print(f"  Class:      {pred_class.replace('_', ' ').upper()}")
+    if pred_class == "symbiotic_binary":
+        print(f"  Class:      EXOTIC SYMBIOTIC BINARY SYSTEM")
+        rg_p = probs.get('red_giant', 0.0) * 100
+        wd_p = probs.get('white_dwarf', 0.0) * 100
+        print(f"  Details:    Red Giant ({rg_p:.1f}%) + White Dwarf ({wd_p:.1f}%)")
+    else:
+        print(f"  Class:      {pred_class.replace('_', ' ').upper()}")
     print(f"  Confidence: {confidence*100:.1f}%")
     print()
     print("  CLASS PROBABILITIES:")
@@ -392,7 +309,10 @@ def print_result(filename, pred_class, confidence, probs,
         p    = probs[cls]
         b    = bar(p, 1.0, width=22)
         name = cls.replace("_", " ").title()
-        arrow = "  <--" if cls == pred_class else ""
+        if pred_class == "symbiotic_binary" and cls in ["red_giant", "white_dwarf"]:
+            arrow = "  [BINARY COMPONENT]"
+        else:
+            arrow = "  <--" if cls == pred_class else ""
         print(f"    {name:<18}  {b}  {p*100:5.1f}%{arrow}")
     m = measurements
     print()
@@ -484,11 +404,18 @@ def classify(fits_path, model, device, class_names, true_label=None, save_plot=T
         logits = model(tensor)
         probs  = torch.softmax(logits, dim=1).cpu().numpy()[0]
 
-    pred_idx   = int(np.argmax(probs))
-    pred_class = class_names[pred_idx]
-    confidence = float(probs[pred_idx])
-    prob_dict  = {class_names[i]: round(float(probs[i]), 4)
-                  for i in range(len(class_names))}
+    prob_dict = {class_names[i]: float(probs[i]) for i in range(len(class_names))}
+
+    rg_score = prob_dict.get('red_giant', 0.0)
+    wd_score = prob_dict.get('white_dwarf', 0.0)
+    
+    if rg_score > 0.35 and wd_score > 0.10:
+        pred_class = "symbiotic_binary"
+        confidence = float(rg_score + wd_score)
+    else:
+        pred_idx   = int(np.argmax(probs))
+        pred_class = class_names[pred_idx]
+        confidence = float(probs[pred_idx])
 
     measurements = get_measurements(flux, z)
     print_result(fits_path, pred_class, confidence, prob_dict,

@@ -1,86 +1,3 @@
-"""
-=============================================================
-PHASE 2 — STEP 4: Resampling to a Uniform Wavelength Grid
-=============================================================
-
-WHAT IS RESAMPLING AND WHY IS IT THE FINAL STEP?
-─────────────────────────────────────────────────
-After the first three steps the spectra are clean and
-normalised — but they still have a critical problem:
-every spectrum has a DIFFERENT number of data points.
-
-Why? Because SDSS uses different spectrograph configurations
-across its 20+ years of observations. A spectrum from 2002
-might have 3,850 pixels. One from 2018 might have 4,632.
-After redshift correction, the wavelength axes are also at
-slightly different positions for each object.
-
-The neural network (CNN or Transformer) needs every single
-input to be EXACTLY the same length. We cannot pass arrays
-of different sizes into a model — it is mathematically
-impossible to batch them together for training.
-
-Resampling solves this by interpolating every spectrum onto
-a single fixed wavelength grid that we define.
-
-THE WAVELENGTH RANGE WE USE:
-─────────────────────────────
-We use 3800Å to 9200Å — the core optical range covered by
-SDSS spectroscopy. Key features in this range:
-
-    3934Å  — Ca II K  (strong in cool stars and white dwarfs)
-    4861Å  — Hβ       (hydrogen Balmer series)
-    5175Å  — Mg I b   (magnesium, strong in giants)
-    5893Å  — Na I D   (sodium)
-    6563Å  — Hα       (strongest hydrogen line)
-    6717Å  — [S II]   (ionised sulphur, quasar indicator)
-
-We use 3000 points across this range. That gives one point
-every ~1.8Å — enough resolution to clearly resolve all
-important absorption and emission features.
-
-HOW INTERPOLATION WORKS:
-─────────────────────────
-Each spectrum's flux values are defined at its own original
-wavelength positions. We use scipy's interp1d to fit a
-cubic spline through those known (wavelength, flux) pairs,
-then evaluate the spline at each of our 3000 target positions.
-
-For wavelength positions outside the original spectrum's
-range, we use the boundary value (extrapolation=False) to
-avoid inventing data that was never observed.
-
-WHAT THIS SCRIPT DOES:
-    1. Defines the fixed target grid (3800–9200Å, 3000 points)
-    2. Loads each normalised .npz from step3_normalised/
-    3. Interpolates the flux onto the target grid
-    4. Saves a fixed-length array to /data/processed/step4_resampled/
-    5. Creates the FINAL dataset file: X.npy and y.npy
-       X = all spectra stacked as a 2D array (n_samples × 3000)
-       y = integer class labels (0, 1, 2, 3)
-    6. Updates master_catalog.csv with 'resampled_filepath' column
-    7. Saves a label_map.json so you always know which number
-       maps to which class name
-
-HOW TO RUN:
-    1. Make sure normalisation.py has finished
-    2. Run:
-        python resampling.py
-
-OUTPUT FILES:
-    - /data/processed/step4_resampled/{label}/spec-XXXX.npz
-    - /data/processed/X.npy      ← ALL spectra as 2D array
-    - /data/processed/y.npy      ← ALL labels as 1D integer array
-    - /data/processed/label_map.json  ← maps integer → class name
-    - /notebooks/resampled_grid_comparison.png
-    - /notebooks/final_dataset_summary.png
-    - master_catalog.csv updated with 'resampled_filepath' column
-
-REQUIRES:
-    pip install numpy pandas matplotlib scipy tqdm
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -117,9 +34,9 @@ CLASS_COLORS = {
 # TARGET GRID DEFINITION
 # This is the fixed wavelength grid every spectrum
 # will be resampled onto. Change these values only
-# if you have a strong reason (e.g. adding UV data).
+# if you have a strong reason.
 # ─────────────────────────────────────────────
-WAVE_MIN    = 3800.0    # Angstroms — blue end of SDSS optical range
+WAVE_MIN    = 3650.0    # Angstroms — blue end of SDSS optical range
 WAVE_MAX    = 9200.0    # Angstroms — red end of SDSS optical range
 N_POINTS    = 3000      # number of evenly spaced wavelength bins
 
@@ -128,8 +45,7 @@ TARGET_GRID = np.linspace(WAVE_MIN, WAVE_MAX, N_POINTS, dtype=np.float32)
 # ─────────────────────────────────────────────
 # LABEL MAPPING
 # Maps class name strings to integer indices.
-# The model outputs a number — this tells us
-# what stellar class that number means.
+# The model outputs a number.
 # ─────────────────────────────────────────────
 LABEL_MAP = {
     "white_dwarf":   0,
@@ -137,12 +53,11 @@ LABEL_MAP = {
     "main_sequence": 2,
     "red_giant":     3,
 }
-# Reverse map: integer → class name (used for display)
+# Reverse map: integer -> class name (used for display)
 REVERSE_MAP = {v: k for k, v in LABEL_MAP.items()}
 
-
 # ─────────────────────────────────────────────
-# HELPER: resample a single spectrum
+# Resample a single spectrum
 # ─────────────────────────────────────────────
 def resample_spectrum(wavelength, flux):
     """
@@ -150,8 +65,7 @@ def resample_spectrum(wavelength, flux):
     the fixed TARGET_GRID using cubic interpolation.
 
     For target wavelengths OUTSIDE the original spectrum's
-    range, we use the nearest boundary value (fill_value=
-    "extrapolate" is avoided — we never want to invent data).
+    range, we use the nearest boundary value.
 
     Args:
         wavelength (np.array): original wavelength axis
@@ -165,7 +79,7 @@ def resample_spectrum(wavelength, flux):
     wavelength = wavelength[sort_idx]
     flux       = flux[sort_idx]
 
-    # Remove duplicate wavelength values (causes interp1d to fail)
+    # Remove duplicate wavelength values
     _, unique_idx = np.unique(wavelength, return_index=True)
     wavelength    = wavelength[unique_idx]
     flux          = flux[unique_idx]
@@ -195,7 +109,6 @@ def resample_spectrum(wavelength, flux):
 
     return resampled
 
-
 # ─────────────────────────────────────────────
 # LOAD CATALOG
 # ─────────────────────────────────────────────
@@ -220,9 +133,8 @@ if "normalised_filepath" not in master.columns:
 for label in master["label"].unique():
     os.makedirs(os.path.join(OUT_DIR, label), exist_ok=True)
 
-
 # ─────────────────────────────────────────────
-# MAIN LOOP — resample every spectrum
+# MAIN LOOP
 # ─────────────────────────────────────────────
 print("\nResampling all spectra to uniform grid...")
 print("(Files already processed will be skipped)\n")
@@ -275,15 +187,11 @@ if failed:
 success = sum(1 for p in resampled_filepaths if p is not None)
 print(f"\n  Resampled: {success} / {len(master)} spectra")
 
-
 # ─────────────────────────────────────────────
 # BUILD FINAL DATASET: X.npy and y.npy
 #
 # X.npy shape: (n_samples, N_POINTS) = (1782, 3000)
 # y.npy shape: (n_samples,)          = (1782,)
-#
-# These are the files that will be passed directly into
-# the model training script in Phase 4.
 # ─────────────────────────────────────────────
 print("\nBuilding final X.npy and y.npy dataset arrays...")
 
@@ -316,8 +224,8 @@ for idx, row in tqdm(valid_rows.iterrows(), total=len(valid_rows), desc="Buildin
         skipped += 1
         continue
 
-X = np.stack(X_list, axis=0)   # shape: (n_samples, 3000)
-y = np.array(y_list, dtype=np.int64)   # shape: (n_samples,)
+X = np.stack(X_list, axis=0)   
+y = np.array(y_list, dtype=np.int64)   
 
 # Save
 X_path = os.path.join(PROCESSED_DIR, "X.npy")
@@ -325,7 +233,6 @@ y_path = os.path.join(PROCESSED_DIR, "y.npy")
 np.save(X_path, X)
 np.save(y_path, y)
 
-# Save label map as JSON
 label_map_path = os.path.join(PROCESSED_DIR, "label_map.json")
 with open(label_map_path, "w") as f:
     json.dump({"label_to_int": LABEL_MAP, "int_to_label": REVERSE_MAP}, f, indent=2)
@@ -338,13 +245,11 @@ print(f"    {X_path}")
 print(f"    {y_path}")
 print(f"    {label_map_path}")
 
-# Print class counts in the final array
 print("\n  Class counts in final dataset:")
 for label, idx_val in LABEL_MAP.items():
     count = int((y == idx_val).sum())
     bar   = "█" * (count // 10)
     print(f"    {label:<22} (label {idx_val})  {count:>5}  {bar}")
-
 
 # ─────────────────────────────────────────────
 # PLOT 1: overlaid resampled spectra per class
@@ -374,9 +279,10 @@ for plot_idx, (cls, label_int) in enumerate(LABEL_MAP.items()):
     key_lines = {"Hα": 6563, "Hβ": 4861, "Ca K": 3934, "Na D": 5893}
     for name, wl in key_lines.items():
         if WAVE_MIN < wl < WAVE_MAX:
+            # Draw the vertical line down the entire plot
             ax.axvline(wl, color="gray", lw=0.8, linestyle="--", alpha=0.5)
-            ax.text(wl + 20, ax.get_ylim()[1] * 0.95 if ax.get_ylim()[1] > 0 else 1.0,
-                    name, fontsize=7, color="gray", va="top")
+            ax.text(wl + 20, 0.92, name, fontsize=7, color="gray", 
+                    va="top", transform=ax.get_xaxis_transform())
 
     ax.set_title(f"{cls.replace('_', ' ').title()}  (n={len(class_indices)})",
                 fontsize=12, fontweight="bold", color=color)
@@ -394,16 +300,15 @@ plt.savefig(plot1_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"  Spectra overlay plot saved to:\n    {plot1_path}")
 
-
 # ─────────────────────────────────────────────
 # PLOT 2: final dataset summary
 # ─────────────────────────────────────────────
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
 # Left: class distribution bar chart
-labels_list = [REVERSE_MAP[i] for i in range(len(LABEL_MAP))]
+labels_list = [REVERSE_MAP[i].replace("_", " ").title() for i in range(len(LABEL_MAP))]
 counts      = [(y == i).sum() for i in range(len(LABEL_MAP))]
-colors_list = [CLASS_COLORS.get(l, "#888") for l in labels_list]
+colors_list = [CLASS_COLORS.get(l.lower().replace(" ", "_"), "#888") for l in labels_list]
 
 bars = ax1.bar(labels_list, counts, color=colors_list, edgecolor="white")
 ax1.set_title("Final Dataset — Class Distribution", fontsize=12, fontweight="bold")
@@ -439,7 +344,6 @@ plt.savefig(plot2_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"  Dataset summary plot saved to:\n    {plot2_path}")
 
-
 # ─────────────────────────────────────────────
 # FINAL SUMMARY
 # ─────────────────────────────────────────────
@@ -450,11 +354,6 @@ print()
 print("Final dataset:")
 print(f"X.npy  shape: {X.shape}  — the spectra (input to the model)")
 print(f"y.npy  shape: {y.shape}  — the labels  (what the model predicts)")
-print()
-print("How to load these in the training script (Phase 3/4):")
-print("import numpy as np")
-print("X = np.load('data/processed/X.npy')  # shape (n, 3000)")
-print("y = np.load('data/processed/y.npy')  # shape (n,)")
 print()
 print("Label mapping (saved in data/processed/label_map.json):")
 for cls, idx_val in LABEL_MAP.items():

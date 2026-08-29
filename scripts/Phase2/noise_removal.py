@@ -1,81 +1,3 @@
-r"""
-=============================================================
-PHASE 2 — STEP 2: Noise Removal
-=============================================================
-
-WHAT IS NOISE IN A SPECTRUM AND WHY REMOVE IT?
-───────────────────────────────────────────────
-When a telescope records light, two kinds of unwanted signal
-get mixed in with the real astronomical data:
-
-1. DETECTOR NOISE (read noise + shot noise)
-   The CCD sensor inside the spectrograph adds tiny random
-   fluctuations to every pixel. This makes the spectrum look
-   jagged even in regions where the true signal is smooth.
-   Think of it like static on a radio — the music is there
-   but hard to hear cleanly.
-
-2. SKY EMISSION LINES
-   Earth's atmosphere glows faintly at very specific
-   wavelengths (oxygen at 5577Å, sodium at 5893Å, etc.).
-   Even after SDSS subtracts the sky, faint residuals remain
-   as sharp upward spikes in the spectrum. These are NOT from
-   the star — they would confuse a model trained to recognise
-   stellar absorption features.
-
-HOW WE REMOVE NOISE — SAVITZKY-GOLAY FILTER:
-─────────────────────────────────────────────
-The Savitzky-Golay filter is a sliding polynomial smoother.
-For each point in the spectrum it fits a polynomial to the
-surrounding N points and replaces the centre value with the
-polynomial's prediction at that position.
-
-Why not just a simple moving average?
-A moving average blurs everything equally — it would smear
-out real absorption lines along with the noise. The S-G filter
-preserves peaks and troughs (absorption lines) while smoothing
-out random pixel-level jitter. It is the standard tool used
-in spectroscopy research for exactly this reason.
-
-Parameters we use:
-    window_length = 11   (how many pixels wide the sliding window is)
-    polyorder     = 3    (degree of polynomial — cubic fits features well)
-
-HOW WE HANDLE SKY EMISSION LINES:
-───────────────────────────────────
-We mask known sky line wavelengths by replacing flux values
-in a narrow window around each line with interpolated values.
-This is called 'inpainting'. The line is detected using a
-sigma-clipping threshold — if a point is more than 3 standard
-deviations above the local median, it is flagged as a spike
-and replaced by linear interpolation from its neighbours.
-
-WHAT THIS SCRIPT DOES:
-    1. Loads each .npz file from step1_redshift/
-    2. Removes sky emission line spikes (sigma clipping)
-    3. Applies Savitzky-Golay smoothing to the flux
-    4. Saves the cleaned spectrum to /data/processed/step2_noise/
-    5. Updates master_catalog.csv with 'noise_filepath' column
-    6. Plots before/after noise removal for one spectrum per class
-
-HOW TO RUN:
-    1. Make sure redshift_correction.py has finished
-    2. Run:
-           python noise_removal.py
-
-OUTPUT FILES:
-    - /data/processed/step2_noise/{label}/spec-XXXX.npz
-      Each .npz contains:
-          wavelength — same corrected wavelength from step 1
-          flux       — smoothed, spike-removed flux
-    - /notebooks/noise_removal_comparison.png
-    - master_catalog.csv updated with 'noise_filepath' column
-
-REQUIRES:
-    pip install numpy pandas matplotlib scipy tqdm
-=============================================================
-"""
-
 import os
 import sys
 import numpy as np
@@ -107,19 +29,12 @@ CLASS_COLORS = {
 
 # ─────────────────────────────────────────────
 # SAVITZKY-GOLAY PARAMETERS
-# Adjust these if smoothing looks too aggressive
-# or too weak on the plots:
-#   - Increase window_length for more smoothing
-#   - Decrease window_length to preserve finer features
-#   - window_length MUST be odd
 # ─────────────────────────────────────────────
 SG_WINDOW   = 11    # number of pixels in sliding window (must be odd)
 SG_POLYORDER = 3    # polynomial degree (must be < SG_WINDOW)
 
 # ─────────────────────────────────────────────
 # KNOWN SKY EMISSION LINE WAVELENGTHS (Angstroms)
-# These are the most common atmospheric residuals
-# in SDSS optical spectra
 # ─────────────────────────────────────────────
 SKY_LINES = [
     5577.3,   # OI atmospheric line — very common residual
@@ -133,9 +48,8 @@ SKY_LINES = [
 ]
 SKY_MASK_WIDTH = 10.0   # Angstroms either side of each sky line to mask
 
-
 # ─────────────────────────────────────────────
-# HELPER: sigma-clip spike removal
+# Sigma-clip spike removal
 # ─────────────────────────────────────────────
 def remove_spikes(wavelength, flux, sigma_threshold=3.0, window=51):
     """
@@ -176,9 +90,8 @@ def remove_spikes(wavelength, flux, sigma_threshold=3.0, window=51):
 
     return flux_clean
 
-
 # ─────────────────────────────────────────────
-# HELPER: mask known sky emission lines
+# Mask known sky emission lines
 # ─────────────────────────────────────────────
 def mask_sky_lines(wavelength, flux):
     """
@@ -199,22 +112,18 @@ def mask_sky_lines(wavelength, flux):
     flux_masked = flux.copy()
 
     for sky_wl in SKY_LINES:
-        # Find pixels within SKY_MASK_WIDTH Angstroms of this line
         mask = np.abs(wavelength - sky_wl) < SKY_MASK_WIDTH
 
         if not mask.any():
-            continue  # This sky line is outside our wavelength range
+            continue
 
-        # Get indices of pixels inside and just outside the mask
         indices      = np.where(mask)[0]
         all_indices  = np.arange(len(flux))
 
-        # Interpolate using pixels outside the mask
         outside_mask = ~mask
         if outside_mask.sum() < 2:
             continue
 
-        # Linear interpolation across the masked region
         flux_masked[mask] = np.interp(
             wavelength[mask],
             wavelength[outside_mask],
@@ -223,19 +132,12 @@ def mask_sky_lines(wavelength, flux):
 
     return flux_masked
 
-
 # ─────────────────────────────────────────────
-# HELPER: apply full noise removal pipeline
+# Apply full noise removal pipeline
 # ─────────────────────────────────────────────
 def clean_spectrum(wavelength, flux):
     """
-    Applies the full noise removal sequence:
-        1. Remove spikes (cosmic rays + sky line peaks)
-        2. Mask and interpolate known sky emission lines
-        3. Apply Savitzky-Golay smoothing
-
-    The order matters — spike removal first prevents the
-    S-G filter from spreading spike values into neighbours.
+    Applies the full noise removal sequence
 
     Returns:
         np.array: cleaned flux (same length as input)
@@ -243,16 +145,14 @@ def clean_spectrum(wavelength, flux):
     flux_step1 = remove_spikes(wavelength, flux)
     flux_step2 = mask_sky_lines(wavelength, flux_step1)
 
-    # Savitzky-Golay requires the window to be shorter than the signal
     window = min(SG_WINDOW, len(flux_step2) - 1)
     if window % 2 == 0:
-        window -= 1  # ensure odd
+        window -= 1
     if window < SG_POLYORDER + 1:
-        return flux_step2  # spectrum too short to filter — return as-is
+        return flux_step2
 
     flux_step3 = savgol_filter(flux_step2, window_length=window, polyorder=SG_POLYORDER)
     return flux_step3.astype(np.float32)
-
 
 # ─────────────────────────────────────────────
 # LOAD CATALOG
@@ -277,7 +177,6 @@ if "redshift_filepath" not in master.columns:
 for label in master["label"].unique():
     os.makedirs(os.path.join(OUT_DIR, label), exist_ok=True)
 
-
 # ─────────────────────────────────────────────
 # MAIN LOOP
 # ─────────────────────────────────────────────
@@ -291,22 +190,18 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Cleaning"):
     in_path = row["redshift_filepath"]
     label   = row["label"]
 
-    # Handle missing redshift file (failed in step 1)
     if pd.isna(in_path) or not os.path.exists(str(in_path)):
         noise_filepaths.append(None)
         failed.append({"filepath": in_path, "error": "redshift file missing"})
         continue
 
-    # Build output path
     basename = os.path.basename(in_path)
     out_path = os.path.join(OUT_DIR, label, basename)
 
-    # Skip if already processed
     if os.path.exists(out_path):
         noise_filepaths.append(out_path)
         continue
 
-    # Load redshift-corrected spectrum
     try:
         data       = np.load(in_path)
         wavelength = data["wavelength"]
@@ -316,7 +211,6 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Cleaning"):
         failed.append({"filepath": in_path, "error": str(e)})
         continue
 
-    # Apply noise removal
     try:
         flux_clean = clean_spectrum(wavelength, flux)
     except Exception as e:
@@ -324,7 +218,6 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Cleaning"):
         failed.append({"filepath": in_path, "error": f"cleaning failed: {e}"})
         continue
 
-    # Save
     np.savez_compressed(out_path, wavelength=wavelength, flux=flux_clean)
     noise_filepaths.append(out_path)
 
@@ -338,7 +231,6 @@ if failed:
 
 success = sum(1 for p in noise_filepaths if p is not None)
 print(f"\n  Cleaned: {success} / {len(master)} spectra")
-
 
 # ─────────────────────────────────────────────
 # PLOT: before vs after noise removal
@@ -360,6 +252,8 @@ for row_idx, cls in enumerate(classes):
     sample  = subset.iloc[0]
     color   = CLASS_COLORS.get(cls, "#555555")
 
+    display_name = str(cls).replace("_", " ").title()
+
     # Load before (redshift corrected, not yet cleaned)
     before_data = np.load(sample["redshift_filepath"])
     wl          = before_data["wavelength"]
@@ -377,13 +271,13 @@ for row_idx, cls in enumerate(classes):
 
     ax_before.plot(wl, np.clip(flux_before, clip_lo, clip_hi),
                    lw=0.6, color=color, alpha=0.8)
-    ax_before.set_title(f"{cls} — Before", fontsize=10, fontweight="bold")
+    ax_before.set_title(f"{display_name} — Before", fontsize=10, fontweight="bold")
     ax_before.set_ylabel("Flux")
     ax_before.grid(True, alpha=0.2)
 
     ax_after.plot(wl, np.clip(flux_after, clip_lo, clip_hi),
                   lw=0.6, color=color, alpha=0.8)
-    ax_after.set_title(f"{cls} — After (smoothed)", fontsize=10, fontweight="bold")
+    ax_after.set_title(f"{display_name} — After (smoothed)", fontsize=10, fontweight="bold")
     ax_after.grid(True, alpha=0.2)
 
     for ax in [ax_before, ax_after]:
@@ -399,7 +293,5 @@ print(f"  Plot saved to: {plot_path}")
 print("\n" + "=" * 60)
 print("STEP 2 COMPLETE")
 print("=" * 60)
-print(f"  Cleaned spectra: {success}")
-print(f"  Output folder:   {OUT_DIR}")
 print(f"  Catalog updated: noise_filepath column added")
 print("\nNext: Run  normalisation.py")

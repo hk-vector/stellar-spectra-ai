@@ -5,10 +5,10 @@ import pandas as pd
 from tqdm import tqdm
 
 # ─────────────────────────────────────────────
-# CONFIGURATION — edit these two lines each run
+# CONFIGURATION — edit these two lines each run (EDIT THESE!)
 # ─────────────────────────────────────────────
-CSV_FILE   = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\catalog\red_giants.csv"   # path to your CSV
-OUTPUT_DIR = r"C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\data\raw\red_giant"            # folder to save .fits files
+CSV_FILE   = r"Path to your CSV"
+OUTPUT_DIR = r"Folder to save .fits files"
 # ─────────────────────────────────────────────
 
 LOG_FILE     = "../logs/download_log.txt"
@@ -44,7 +44,6 @@ with open(LOG_FILE, "a") as log:
         url = f"{BASE_URL}/{plate:04d}/{filename}"
         savepath = os.path.join(OUTPUT_DIR, filename)
 
-        # Skip if already downloaded
         if os.path.exists(savepath):
             log.write(f"SKIP  {filename}\n")
             success_count += 1
@@ -84,4 +83,4 @@ if failed_rows:
 print(f"\nDone. Success: {success_count} | Failed: {fail_count}")
 print(f"Log saved to: {LOG_FILE}")
 if fail_count > 0:
-    print(f"Failed rows saved to: logs/failed_downloads.csv — re-run the script on that file to retry")
+    print(f"Failed rows saved to: logs/failed_downloads.csv. Re-run the script on that file to retry")

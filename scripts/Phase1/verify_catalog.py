@@ -1,35 +1,3 @@
-"""
-=============================================================
-PHASE 1 — STEP 4: Verify and Inspect Your Data
-=============================================================
-
-WHAT THIS SCRIPT DOES:
-    1. Loads master_catalog.csv
-    2. Opens one .fits spectrum from EACH class and plots it
-    3. Prints the class distribution (how many samples per class)
-    4. Detects any corrupted .fits files that fail to open
-    5. Removes corrupted entries from the catalog and saves a clean version
-    6. Saves all plots as PNG images into /notebooks/ for your reference
-
-HOW TO RUN:
-    1. Make sure you have already run build_catalog.py (Step 3)
-    2. Open your terminal
-    3. Navigate to your scripts folder:
-           cd Desktop/stellar-spectra-ai/scripts
-    4. Run:
-           python verify_catalog.py
-
-OUTPUT FILES:
-    - /notebooks/spectra_samples.png     — plot of one spectrum per class
-    - /notebooks/class_distribution.png  — bar chart of sample counts
-    - /data/catalog/master_catalog.csv   — updated with bad rows removed
-    - /logs/bad_files.txt                — list of any corrupted .fits files
-
-REQUIRES:
-    pip install astropy pandas matplotlib numpy tqdm
-=============================================================
-"""
-
 import os
 import sys
 import pandas as pd
@@ -53,7 +21,7 @@ os.makedirs(NOTEBOOKS, exist_ok=True)
 os.makedirs(LOGS, exist_ok=True)
 
 # ─────────────────────────────────────────────
-# COLOUR MAP — one colour per class for plots
+# COLOUR MAP
 # ─────────────────────────────────────────────
 CLASS_COLORS = {
     "white_dwarf":   "#4A90D9",
@@ -63,7 +31,7 @@ CLASS_COLORS = {
 }
 
 # ─────────────────────────────────────────────
-# HELPER: extract wavelength + flux from a .fits file
+# Extract wavelength + flux from a .fits file
 # ─────────────────────────────────────────────
 def load_spectrum(filepath):
     """
@@ -98,15 +66,14 @@ def load_spectrum(filepath):
 
 
 # ─────────────────────────────────────────────
-# STEP 4A — Load the master catalog
+# Load the master catalog
 # ─────────────────────────────────────────────
 print("=" * 60)
-print("STEP 4: Verifying and Inspecting Your Data")
+print("Verifying and Inspecting Your Data")
 print("=" * 60)
 
 if not os.path.exists(CATALOG_FILE):
     print(f"\nERROR: Could not find master_catalog.csv at:\n  {CATALOG_FILE}")
-    print("Make sure you have run build_master_catalog.py first.")
     sys.exit(1)
 
 master = pd.read_csv(CATALOG_FILE)
@@ -115,14 +82,14 @@ print(f"Classes found: {master['label'].unique().tolist()}")
 
 
 # ─────────────────────────────────────────────
-# STEP 4B — Print class distribution
+# Print class distribution
 # ─────────────────────────────────────────────
 print("\n" + "─" * 40)
 print("CLASS DISTRIBUTION")
 print("─" * 40)
 dist = master["label"].value_counts()
 for label, count in dist.items():
-    bar = "█" * (count // 10)      # simple ASCII bar
+    bar = "█" * (count // 10)
     print(f"  {label:<20} {count:>5}  {bar}")
 
 # Warn if any class has fewer than 200 samples
@@ -133,7 +100,7 @@ for label, count in dist.items():
 
 
 # ─────────────────────────────────────────────
-# STEP 4C — Plot class distribution bar chart
+# Plot class distribution bar chart
 # ─────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(8, 4))
 colors  = [CLASS_COLORS.get(lbl, "#888888") for lbl in dist.index]
@@ -143,6 +110,9 @@ ax.set_xlabel("Stellar Class", fontsize=12)
 ax.set_ylabel("Number of Samples", fontsize=12)
 ax.set_title("Class Distribution in Master Catalog", fontsize=14, fontweight="bold")
 ax.set_ylim(0, dist.max() * 1.15)
+
+ax.set_xticks(range(len(dist.index)))
+ax.set_xticklabels([str(lbl).replace("_", " ").title() for lbl in dist.index], fontsize=11)
 
 # Label each bar with its count
 for bar, val in zip(bars, dist.values):
@@ -161,8 +131,7 @@ print(f"\nClass distribution chart saved to:\n  {dist_plot_path}")
 
 
 # ─────────────────────────────────────────────
-# STEP 4D — Verify every .fits file
-#            (check it exists and opens cleanly)
+#Verify every .fits file
 # ─────────────────────────────────────────────
 print("\n" + "─" * 40)
 print("VERIFYING .FITS FILES")
@@ -174,7 +143,6 @@ bad_filepaths = []
 for idx, row in tqdm(master.iterrows(), total=len(master), desc="Checking files"):
     fp = row["filepath"]
 
-    # Check file exists on disk
     if not os.path.exists(fp):
         bad_filepaths.append(fp)
         continue
@@ -182,14 +150,13 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Checking files"
     # Try opening with astropy — catches truncated / corrupt files
     try:
         with fits.open(fp) as hdul:
-            _ = hdul["COADD"].data["flux"]   # access the actual data block
+            _ = hdul["COADD"].data["flux"]
         good_indices.append(idx)
 
     except Exception as e:
         print(f"\n  Corrupted: {os.path.basename(fp)}  ({e})")
         bad_filepaths.append(fp)
 
-# Save bad file list
 if bad_filepaths:
     with open(BAD_FILE, "w") as f:
         for p in bad_filepaths:
@@ -198,7 +165,6 @@ if bad_filepaths:
 else:
     print("\n  All files verified successfully — no corruption found.")
 
-# Remove bad rows from master and save
 master_clean = master.loc[good_indices].reset_index(drop=True)
 master_clean.to_csv(CATALOG_FILE, index=False)
 
@@ -208,7 +174,7 @@ print(f"  Saved to:      {CATALOG_FILE}")
 
 
 # ─────────────────────────────────────────────
-# STEP 4E — Plot one sample spectrum per class
+# Plot one sample spectrum per class
 # ─────────────────────────────────────────────
 print("\n" + "─" * 40)
 print("PLOTTING SAMPLE SPECTRA")
@@ -240,7 +206,6 @@ for ax, cls in zip(axes, classes):
         ax.set_xlabel("Wavelength (Å)", fontsize=10)
         ax.set_ylabel("Flux", fontsize=10)
 
-        # Mark key absorption lines
         key_lines = {
             "Hα":    6563,
             "Hβ":    4861,
@@ -267,9 +232,9 @@ plt.close()
 print(f"  Sample spectra plot saved to:\n    {spectra_plot_path}")
 
 print("\n" + "=" * 60)
-print("STEP 4 COMPLETE")
+print("STEP 4 COMPLETE - PHASE 1 FULLY DONE")
 print("=" * 60)
 print(f"  Clean samples:      {len(master_clean)}")
 print(f"  Bad files removed:  {len(master) - len(master_clean)}")
 print(f"  Plots saved in:     {NOTEBOOKS}")
-print("\nNext: Run  backup_and_version.py")
+print("\nNext: Run  redshift_correction.py")

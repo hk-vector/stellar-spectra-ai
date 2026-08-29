@@ -1,69 +1,3 @@
-r'''
-=============================================================
-PHASE 2 — STEP 1: Redshift Correction
-=============================================================
-
-WHAT IS REDSHIFT AND WHY DOES IT MATTER?
-─────────────────────────────────────────
-When an object in space is moving away from us, its light
-gets stretched to longer (redder) wavelengths. This shift
-is called redshift, measured as the value 'z' in the catalog.
-
-Example: The hydrogen alpha absorption line (Hα) sits at
-6563 Å in a stationary star. In a quasar with z=0.5, that
-same line would appear at:
-    6563 × (1 + 0.5) = 9844 Å
-
-If you try to train a model on uncorrected spectra, the same
-physical feature appears at a completely different wavelength
-for every object — making it nearly impossible for any model
-to learn consistent patterns.
-
-Redshift correction (also called 'de-redshifting') shifts
-every spectrum back to its rest-frame, so the same absorption
-lines always appear at the same wavelength regardless of how
-far away the object is.
-
-The formula is simple:
-    wavelength_rest = wavelength_observed / (1 + z)
-
-Most stars in the dataset have z ≈ 0 (they are in our galaxy
-and barely moving relative to us), so correction makes almost
-no difference for them. But quasars can have z > 2, meaning
-their features are shifted by 3x — correction is critical.
-
-WHAT THIS SCRIPT DOES:
-    1. Loads master_catalog.csv
-    2. For each spectrum, reads the raw flux and wavelength
-       from the .fits file
-    3. Applies the redshift correction to the wavelength axis
-    4. Saves the corrected (wavelength, flux) pair as a .npz
-       file in /data/processed/step1_redshift/
-    5. Updates master_catalog.csv with a 'redshift_filepath'
-       column pointing to each corrected file
-    6. Plots before/after comparison for one spectrum per class
-
-HOW TO RUN:
-    1. Make sure verify_catalog.py has been run and the
-        master_catalog.csv has clean rows
-    2. Open terminal, navigate to scripts folder:
-        cd "C:\Users\Harshit\OneDrive\Desktop\stellar-spectra-ai\scripts"
-    3. Run:
-        python redshift_correction.py
-
-OUTPUT FILES:
-    - /data/processed/step1_redshift/{label}/spec-XXXX.npz
-    - Each .npz contains two arrays:
-        wavelength — corrected wavelength axis in Angstroms
-        flux       — raw flux values (not yet normalised)
-    - /notebooks/redshift_comparison.png
-    - master_catalog.csv updated with 'redshift_filepath' column
-
-REQUIRES:
-    pip install astropy numpy pandas matplotlib tqdm
-=============================================================
-'''
-
 import os
 import sys
 import numpy as np
@@ -94,7 +28,7 @@ CLASS_COLORS = {
 }
 
 # ─────────────────────────────────────────────
-# HELPER: read raw wavelength + flux from .fits
+# Read raw wavelength + flux from .fits
 # ─────────────────────────────────────────────
 def read_fits(filepath):
     """
@@ -119,25 +53,18 @@ def read_fits(filepath):
             log_wave   = coeff0 + coeff1 * np.arange(npix)
             wavelength = (10 ** log_wave).astype(np.float32)
         else:
-            # Fallback for files missing header coefficients
             wavelength = np.arange(len(flux), dtype=np.float32)
 
     return wavelength, flux
 
-
 # ─────────────────────────────────────────────
-# HELPER: apply redshift correction
+# Apply redshift correction
 # ─────────────────────────────────────────────
 def correct_redshift(wavelength, z):
     """
     Shifts the observed wavelength axis back to rest-frame.
 
     Formula:  wavelength_rest = wavelength_observed / (1 + z)
-
-    For a star with z=0 this changes nothing.
-    For a quasar with z=2.0 this compresses the wavelength
-    axis by a factor of 3, bringing all features back to
-    where they would be if the quasar were stationary.
 
     Args:
         wavelength (np.array): observed wavelength in Angstroms
@@ -146,11 +73,10 @@ def correct_redshift(wavelength, z):
     Returns:
         np.array: rest-frame wavelength in Angstroms
     """
-    # Guard against bad z values (NaN, negative, unrealistically large)
+    # Guard against bad z values
     if not np.isfinite(z) or z < 0 or z > 10:
         z = 0.0
     return wavelength / (1.0 + z)
-
 
 # ─────────────────────────────────────────────
 # LOAD CATALOG
@@ -167,26 +93,22 @@ if not os.path.exists(CATALOG_FILE):
 master = pd.read_csv(CATALOG_FILE)
 print(f"\nLoaded catalog: {len(master)} rows")
 
-# Check the 'z' column exists
 if "z" not in master.columns:
     print("\nERROR: 'z' column not found in catalog.")
     print("This column holds the redshift value from SDSS.")
     print("Re-check the SQL query included 'z' in the SELECT.")
     sys.exit(1)
 
-# Fill missing z values with 0 (treat as no redshift)
 missing_z = master["z"].isna().sum()
 if missing_z > 0:
     print(f"  WARNING: {missing_z} rows have missing z values — treating as z=0")
     master["z"] = master["z"].fillna(0.0)
-
 
 # ─────────────────────────────────────────────
 # CREATE OUTPUT SUBFOLDERS PER CLASS
 # ─────────────────────────────────────────────
 for label in master["label"].unique():
     os.makedirs(os.path.join(OUT_DIR, label), exist_ok=True)
-
 
 # ─────────────────────────────────────────────
 # MAIN LOOP — process every spectrum
@@ -202,7 +124,6 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Correcting"):
     label     = row["label"]
     z         = float(row["z"])
 
-    # Build output path — same filename but .npz extension
     basename   = os.path.splitext(os.path.basename(fits_path))[0]
     out_path   = os.path.join(OUT_DIR, label, basename + ".npz")
 
@@ -219,11 +140,9 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Correcting"):
         redshift_filepaths.append(None)
         continue
 
-    # Apply redshift correction to wavelength axis
     wavelength_rest = correct_redshift(wavelength, z)
 
     # Save as .npz — this stores multiple named arrays in one file
-    # Load later with:  data = np.load(path); wl = data["wavelength"]
     np.savez_compressed(out_path, wavelength=wavelength_rest, flux=flux)
     redshift_filepaths.append(out_path)
 
@@ -231,7 +150,6 @@ for idx, row in tqdm(master.iterrows(), total=len(master), desc="Correcting"):
 master["redshift_filepath"] = redshift_filepaths
 master.to_csv(CATALOG_FILE, index=False)
 
-# Log failures
 if failed:
     fail_df = pd.DataFrame(failed)
     fail_df.to_csv(os.path.join(LOGS, "redshift_failed.csv"), index=False)
@@ -241,14 +159,12 @@ success = sum(1 for p in redshift_filepaths if p is not None)
 print(f"\n  Processed: {success} / {len(master)} spectra")
 print(f"  Saved to:  {OUT_DIR}")
 
-
 # ─────────────────────────────────────────────
 # PLOT: before vs after redshift correction
-# for one quasar (most visually dramatic class)
+# for one quasar
 # ─────────────────────────────────────────────
 print("\nGenerating before/after comparison plot...")
 
-# Find a quasar with a meaningful redshift (z > 0.3)
 quasars = master[(master["label"] == "quasar") & (master["z"] > 0.3)]
 
 if len(quasars) == 0:
@@ -298,7 +214,6 @@ else:
 print("\n" + "=" * 60)
 print("STEP 1 COMPLETE")
 print("=" * 60)
-print(f"  Corrected spectra: {success}")
-print(f"  Output folder:     {OUT_DIR}")
+
 print(f"  Catalog updated:   redshift_filepath column added")
 print("\nNext: Run  noise_removal.py")

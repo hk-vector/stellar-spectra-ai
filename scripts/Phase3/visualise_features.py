@@ -1,85 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-=============================================================
-PHASE 3 - STEP 2: Visualise Learned Features
-=============================================================
-
-WHY VISUALISE FEATURES BEFORE TRAINING?
------------------------------------------
-Before trusting a model to classify real spectra, you need
-to verify that what it has LEARNED actually makes sense.
-
-The CNN has compressed each 3000-point spectrum into a
-64-dimensional feature vector. But 64 dimensions is still
-impossible to visualise directly -- humans can only see 2D
-or 3D.
-
-We use three visualisation techniques to inspect the features:
-
-1. PCA (Principal Component Analysis)
-   Projects 64 dimensions down to 2 by finding the two axes
-   of greatest variance. Fast and linear -- shows the overall
-   structure of the feature space.
-
-   What to look for: are the four classes separating into
-   distinct regions? If yes, the CNN has learned meaningful
-   features. If all classes overlap completely, something
-   went wrong in training.
-
-2. t-SNE (t-Distributed Stochastic Neighbour Embedding)
-   A more powerful non-linear technique. It tries to keep
-   nearby points in 64D close together in 2D, and push
-   distant points further apart. Better at revealing cluster
-   structure than PCA.
-
-   What to look for: tight, well-separated clusters of the
-   same colour = excellent feature learning. Overlapping
-   clusters between two classes = those classes are hard to
-   distinguish (which is physically meaningful -- some K-type
-   stars really do look like red giants).
-
-3. Activation Maps (Gradient-weighted Class Activation Mapping)
-   This answers: WHICH PARTS OF THE SPECTRUM is the CNN
-   looking at when it decides a spectrum is a white dwarf
-   vs a quasar?
-
-   For each class, we compute how much each wavelength region
-   contributed to the classification decision. This produces
-   a heatmap overlaid on the spectrum showing the CNN's
-   "attention".
-
-   What to look for: activation peaks near known absorption
-   lines (Halpha at 6563, Ca K at 3934, etc.) confirm the
-   CNN is using physically meaningful features. Activation
-   peaks in random places would be a red flag.
-
-WHAT THIS SCRIPT DOES:
-    1. Loads features.npy (64-dim vectors from Step 1)
-    2. Runs PCA -> 2D and plots coloured scatter
-    3. Runs t-SNE -> 2D and plots coloured scatter
-    4. Computes per-class mean features and plots feature heatmap
-    5. Loads the trained CNN and computes activation maps
-       showing which wavelengths each class responds to
-    6. Saves all plots to /notebooks/
-
-HOW TO RUN:
-    1. Make sure cnn_feature_extractor.py has finished
-    2. Run:
-           python visualise_features.py
-
-       t-SNE on ~1700 samples takes about 1-2 minutes. Normal.
-
-OUTPUT FILES:
-    - /notebooks/pca_features.png
-    - /notebooks/tsne_features.png
-    - /notebooks/feature_heatmap.png
-    - /notebooks/activation_maps.png
-
-REQUIRES:
-    pip install numpy matplotlib scikit-learn torch tqdm
-=============================================================
-"""
-
 import os
 import sys
 import json
@@ -135,7 +53,6 @@ WAVE_MAX   = 9200.0
 N_POINTS   = 3000
 TARGET_GRID = np.linspace(WAVE_MIN, WAVE_MAX, N_POINTS, dtype=np.float32)
 
-
 # ─────────────────────────────────────────────
 # LOAD DATA
 # ─────────────────────────────────────────────
@@ -169,7 +86,6 @@ print(f"Classes: {CLASS_NAMES}")
 # (zero mean, unit variance -- required for PCA to work correctly)
 scaler   = StandardScaler()
 features_scaled = scaler.fit_transform(features)
-
 
 # ─────────────────────────────────────────────
 # VISUALISATION 1: PCA
@@ -206,7 +122,6 @@ plt.savefig(pca_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"  PCA plot saved to:\n    {pca_path}")
 print(f"  Variance explained: PC1={explained[0]:.1f}%  PC2={explained[1]:.1f}%")
-
 
 # ─────────────────────────────────────────────
 # VISUALISATION 2: t-SNE
@@ -248,7 +163,6 @@ plt.savefig(tsne_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"  t-SNE plot saved to:\n    {tsne_path}")
 
-
 # ─────────────────────────────────────────────
 # VISUALISATION 3: Per-class mean feature heatmap
 #
@@ -283,7 +197,6 @@ heatmap_path = os.path.join(NOTEBOOKS, "feature_heatmap.png")
 plt.savefig(heatmap_path, dpi=150, bbox_inches="tight")
 plt.close()
 print(f"  Feature heatmap saved to:\n    {heatmap_path}")
-
 
 # ─────────────────────────────────────────────
 # VISUALISATION 4: Activation maps
@@ -419,35 +332,9 @@ else:
     plt.close()
     print(f"  Activation maps saved to:\n    {act_path}")
 
-
 # ─────────────────────────────────────────────
-# INTERPRETATION GUIDE printed to terminal
+# Summary
 # ─────────────────────────────────────────────
-print()
-print("=" * 60)
-print("HOW TO INTERPRET YOUR PLOTS")
-print("=" * 60)
-print()
-print("pca_features.png")
-print("  GOOD: each colour forms its own cluster, clusters")
-print("        are spread apart with little overlap")
-print("  BAD:  all colours mixed together in one blob")
-print()
-print("tsne_features.png")
-print("  GOOD: tight islands of same colour, minimal mixing")
-print("  BAD:  colours interleaved randomly")
-print("  NOTE: some overlap between red_giant and main_sequence")
-print("        is physically expected -- they share spectral traits")
-print()
-print("feature_heatmap.png")
-print("  GOOD: each row (class) has a different colour pattern")
-print("  BAD:  all rows look identical")
-print()
-print("activation_maps.png")
-print("  GOOD: activation peaks line up with spectral line markers")
-print("        e.g. white dwarf activation peaks near Ha, Hb")
-print("             quasar activation peaks near Ha emission")
-print("  BAD:  activation peaks are flat or random across spectrum")
 print()
 print("=" * 60)
 print("PHASE 3 COMPLETE")

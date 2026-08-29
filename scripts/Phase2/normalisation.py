@@ -1,88 +1,3 @@
-r"""
-=============================================================
-PHASE 2 — STEP 3: Continuum Normalisation
-=============================================================
-
-WHAT IS THE CONTINUUM AND WHY NORMALISE?
-─────────────────────────────────────────
-A stellar spectrum has two components:
-
-1. THE CONTINUUM — the smooth background glow of the star,
-   shaped like a broad curve. A hot white dwarf peaks in
-   the blue (short wavelengths). A cool red giant peaks in
-   the red (long wavelengths). This curve is determined by
-   the star's temperature (Planck/blackbody radiation).
-
-2. ABSORPTION LINES — narrow dips in the continuum at
-   specific wavelengths where atoms in the star's atmosphere
-   absorb photons. Hydrogen absorbs at Hα (6563Å), Hβ
-   (4861Å), etc. Calcium absorbs at Ca K (3934Å). These
-   patterns are the real fingerprint that identifies the
-   stellar type.
-
-THE PROBLEM:
-A white dwarf 10 light years away and a red giant 1000 light
-years away have completely different absolute flux values —
-the nearby star is much brighter. But their absorption line
-PATTERNS are what matter for classification, not their
-overall brightness.
-
-If we feed raw flux values into a model, it would partially
-learn to classify based on brightness (a proxy for distance)
-rather than the physics of the star itself. That is not what
-we want.
-
-THE SOLUTION — CONTINUUM NORMALISATION:
-Estimate the smooth background continuum curve, then divide
-every flux value by that continuum. The result is a spectrum
-where:
-    - The continuum becomes a flat line at 1.0
-    - Absorption lines appear as dips below 1.0
-    - Emission lines appear as peaks above 1.0
-    - All spectra are on exactly the same scale regardless
-      of the original brightness or distance
-
-HOW WE ESTIMATE THE CONTINUUM:
-We use an iterative sigma-clipping spline fit:
-    1. Fit a cubic spline through the spectrum
-    2. Find all points MORE than 1 sigma BELOW the spline
-       (these are the absorption lines we want to exclude)
-    3. Remove those points and refit the spline
-    4. Repeat 3 times — the spline converges on the true
-       continuum shape without being pulled down by lines
-    5. Divide the spectrum by this final spline estimate
-
-This method is standard in stellar spectroscopy and works
-well across all four of our stellar classes.
-
-WHAT THIS SCRIPT DOES:
-    1. Loads each .npz from step2_noise/
-    2. Estimates the continuum using iterative spline fitting
-    3. Divides flux by the continuum to normalise
-    4. Clips the result to a physically reasonable range
-    5. Saves normalised spectrum to /data/processed/step3_normalised/
-    6. Updates master_catalog.csv with 'normalised_filepath' column
-    7. Plots the continuum fit and normalised result per class
-
-HOW TO RUN:
-    1. Make sure noise_removal.py has finished
-    2. Run:
-        python normalisation.py
-
-OUTPUT FILES:
-    - /data/processed/step3_normalised/{label}/spec-XXXX.npz
-    - Each .npz contains:
-        wavelength  — same corrected wavelength
-        flux        — normalised flux (continuum = 1.0)
-        continuum   — the estimated continuum curve (for reference)
-    - /notebooks/normalisation_comparison.png
-    - master_catalog.csv updated with 'normalised_filepath' column
-
-REQUIRES:
-    pip install numpy pandas matplotlib scipy tqdm
-=============================================================
-"""
-
 import os
 import sys
 import numpy as np
@@ -122,9 +37,8 @@ SPLINE_SMOOTH     = 1e6     # spline smoothing factor — higher = smoother cont
 NORM_CLIP_LO      = 0.0     # clip normalised flux below this (physically, flux >= 0)
 NORM_CLIP_HI      = 3.0     # clip normalised flux above this (emission lines rarely > 3x continuum)
 
-
 # ─────────────────────────────────────────────
-# HELPER: estimate continuum with iterative
+# Estimate continuum with iterative
 # sigma-clipping spline fit
 # ─────────────────────────────────────────────
 def estimate_continuum(wavelength, flux):
@@ -149,14 +63,12 @@ def estimate_continuum(wavelength, flux):
             return np.full_like(flux, np.median(flux))
 
         try:
-            # Fit a cubic spline through the unmasked pixels
             spline    = UnivariateSpline(wl_fit, fl_fit, s=SPLINE_SMOOTH, k=3, ext=3)
             continuum = spline(wl)
 
-            # Protect against zero or negative continuum values
             continuum = np.maximum(continuum, 1e-10)
 
-            # Compute residuals: how much is each point below the spline?
+            # Compute residuals:
             residuals = fl - continuum
             std_below = np.std(residuals[residuals < 0]) if (residuals < 0).any() else 1.0
 
@@ -165,14 +77,13 @@ def estimate_continuum(wavelength, flux):
             mask = residuals > -SIGMA_CLIP * std_below
 
         except Exception:
-            # Spline fit failed — return flat continuum
+            # Spline fit failed
             return np.full_like(flux, np.median(flux))
 
     return continuum.astype(np.float32)
 
-
 # ─────────────────────────────────────────────
-# HELPER: normalise a spectrum by its continuum
+# Normalise a spectrum by its continuum
 # ─────────────────────────────────────────────
 def normalise_spectrum(wavelength, flux):
     """
@@ -191,7 +102,6 @@ def normalise_spectrum(wavelength, flux):
     flux_norm  = flux / continuum
     flux_norm  = np.clip(flux_norm, NORM_CLIP_LO, NORM_CLIP_HI)
     return flux_norm.astype(np.float32), continuum
-
 
 # ─────────────────────────────────────────────
 # LOAD CATALOG
@@ -214,7 +124,6 @@ if "noise_filepath" not in master.columns:
 
 for label in master["label"].unique():
     os.makedirs(os.path.join(OUT_DIR, label), exist_ok=True)
-
 
 # ─────────────────────────────────────────────
 # MAIN LOOP
@@ -275,9 +184,8 @@ if failed:
 success = sum(1 for p in norm_filepaths if p is not None)
 print(f"\n  Normalised: {success} / {len(master)} spectra")
 
-
 # ─────────────────────────────────────────────
-# PLOT: raw + continuum overlay, then normalised
+# PLOT: raw + continuum overlay then normalised
 # ─────────────────────────────────────────────
 print("\nGenerating normalisation plots...")
 
@@ -295,12 +203,12 @@ for row_idx, cls in enumerate(classes):
     sample = subset.iloc[0]
     color  = CLASS_COLORS.get(cls, "#555555")
 
-    # Load noise-cleaned (unnormalised) spectrum
+    display_name = str(cls).replace("_", " ").title()
+
     noise_data = np.load(sample["noise_filepath"])
     wl         = noise_data["wavelength"]
     flux_raw   = noise_data["flux"]
 
-    # Load normalised spectrum + continuum
     norm_data  = np.load(sample["normalised_filepath"])
     flux_norm  = norm_data["flux"]
     continuum  = norm_data["continuum"]
@@ -316,7 +224,7 @@ for row_idx, cls in enumerate(classes):
                 lw=0.6, color=color, alpha=0.7, label="Flux")
     ax_raw.plot(wl, np.clip(continuum, clip_lo, clip_hi),
                 lw=1.5, color="black", linestyle="--", alpha=0.8, label="Continuum fit")
-    ax_raw.set_title(f"{cls} — Raw + Continuum", fontsize=10, fontweight="bold")
+    ax_raw.set_title(f"{display_name} — Raw + Continuum", fontsize=10, fontweight="bold")
     ax_raw.set_ylabel("Flux")
     ax_raw.legend(fontsize=8)
     ax_raw.grid(True, alpha=0.2)
@@ -324,7 +232,7 @@ for row_idx, cls in enumerate(classes):
     # Right plot: normalised spectrum (continuum = 1.0)
     ax_norm.plot(wl, flux_norm, lw=0.6, color=color, alpha=0.9)
     ax_norm.axhline(1.0, color="black", lw=0.8, linestyle="--", alpha=0.5, label="Continuum level")
-    ax_norm.set_title(f"{cls} — Normalised", fontsize=10, fontweight="bold")
+    ax_norm.set_title(f"{display_name} — Normalised", fontsize=10, fontweight="bold")
     ax_norm.set_ylabel("Normalised Flux")
     ax_norm.set_ylim(NORM_CLIP_LO - 0.05, min(NORM_CLIP_HI, 2.0))
     ax_norm.legend(fontsize=8)
@@ -343,7 +251,5 @@ print(f"  Plot saved to: {plot_path}")
 print("\n" + "=" * 60)
 print("STEP 3 COMPLETE")
 print("=" * 60)
-print(f"  Normalised spectra: {success}")
-print(f"  Output folder:      {OUT_DIR}")
 print(f"  Catalog updated:    normalised_filepath column added")
 print("\nNext: Run  resampling.py")
