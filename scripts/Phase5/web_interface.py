@@ -20,7 +20,8 @@ import gradio as gr
 # ─────────────────────────────────────────────
 SHARE = False    # set True to get a public shareable link
 
-BASE_DIR       = os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop", "stellar-spectra-ai")
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR    = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
 PROCESSED_DIR  = os.path.join(BASE_DIR, "data", "processed")
 MODELS_DIR     = os.path.join(BASE_DIR, "models")
 LABEL_MAP_PATH = os.path.join(PROCESSED_DIR, "label_map.json")
@@ -580,13 +581,15 @@ with gr.Blocks(css=css, title="Stellar Spectra Classifier") as app:
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
     print("\nStarting Stellar Spectra AI web interface...")
-    print("Open your browser at:  http://localhost:7860")
+    port = int(os.environ.get("PORT", 7860))
+    
+    print(f"Server starting on port {port}")
     if SHARE:
         print("Generating public share link...")
     print()
     app.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=port,
         share=SHARE,
         show_error=True,
     )
