@@ -17,8 +17,9 @@ Alongside deep learning predictions, the pipeline measures physical properties i
 
 ---
 
-## Model Performance
+## Model Performance & Evaluation
 
+### Performance
 Evaluated on a held-out test split (70% Train, 15% Validation, 15% Test):
 
 | Target Class            | Precision | Recall   | F1-Score | ROC-AUC   |
@@ -28,6 +29,12 @@ Evaluated on a held-out test split (70% Train, 15% Validation, 15% Test):
 | **Main Sequence**       | 0.88      | 0.90     | 0.89     | 0.989     |
 | **Red Giant**           | 1.00      | 1.00     | 1.00     | 1.000     |
 | **Overall (Macro Avg)** | **0.94**  | **0.94** | **0.94** | **0.993** |
+
+### Training Curves
+![Training Curves](notebooks/training_curves_v2.png)
+
+### Confusion Matrix
+![Confusion Matrix](notebooks/confusion_matrix_v2.png)
 
 ---
 
