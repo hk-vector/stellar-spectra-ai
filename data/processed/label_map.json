@@ -1,0 +1,14 @@
+{
+  "label_to_int": {
+    "white_dwarf": 0,
+    "quasar": 1,
+    "main_sequence": 2,
+    "red_giant": 3
+  },
+  "int_to_label": {
+    "0": "white_dwarf",
+    "1": "quasar",
+    "2": "main_sequence",
+    "3": "red_giant"
+  }
+}
