@@ -47,3 +47,6 @@ models/checkpoints/
 *.pt
 *.pth
 *.h5
+
+!data/processed/label_map.json
+!models/cnn_v2.pth

@@ -1,6 +1,16 @@
 # Stellar Spectra AI
 
-An end-to-end machine learning system that classifies astronomical spectra into stellar types and quasars, while automatically computing key astrophysical physical properties.
+An end-to-end deep learning system that classifies astronomical spectra into stellar types and quasars, while automatically computing key astrophysical physical properties.
+
+---
+
+## Live Demo
+
+[![Live Demo](https://img.shields.io/badge/Render-Live%20Demo-brightgreen?style=for-the-badge&logo=render)](https://stellar-spectra-ai.onrender.com)
+
+An end-to-end deep learning framework for classifying stellar and extragalactic spectra using SDSS DR18 data.
+
+**Live Interactive App:** [Try Stellar Spectra AI on Render](https://stellar-spectra-ai.onrender.com)
 
 ---
 
@@ -35,6 +45,9 @@ Evaluated on a held-out test split (70% Train, 15% Validation, 15% Test):
 
 ### Confusion Matrix
 ![Confusion Matrix](notebooks/confusion_matrix_v2.png)
+
+### ROC Curves
+![ROC Curves](notebooks/roc_curves.png)
 
 ---
 
